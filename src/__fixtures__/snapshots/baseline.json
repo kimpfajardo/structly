@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-07-04T00:00:00.000Z",
+  "url": "https://example.com/",
+  "pageType": "marketing",
+  "meta": {
+    "title": "Example Product — Fast, Simple, Reliable",
+    "metaDescription": "Example Product helps teams ship faster with less risk.",
+    "canonical": "https://example.com/",
+    "canonicalCount": 1,
+    "robots": null,
+    "lang": "en",
+    "viewport": "width=device-width, initial-scale=1"
+  },
+  "headings": [
+    { "level": 1, "text": "Example Product" },
+    { "level": 2, "text": "Why teams choose it" }
+  ],
+  "h1Count": 1,
+  "landmarks": {
+    "hasMain": true,
+    "hasNav": true,
+    "hasHeader": true,
+    "hasFooter": true,
+    "mainCount": 1
+  },
+  "links": [],
+  "buttons": [],
+  "primaryCta": { "text": "Start free trial", "accessibleName": "Start free trial" },
+  "formControls": [],
+  "jsonLd": [
+    { "raw": "{\"@type\":\"Product\"}", "valid": true, "types": ["Product"], "parsed": { "@type": "Product" } }
+  ],
+  "rendered": {
+    "mainTextLength": 1200,
+    "bodyTextLength": 1800,
+    "hasSkeletonMarkers": false,
+    "frameworkMarkers": []
+  },
+  "raw": { "available": true, "mainTextLength": 1100, "bodyTextLength": 1700 },
+  "topContentText": "Example Product helps teams ship faster with less risk by combining planning, review, and release tooling in one place so everyone stays aligned and informed."
+}
