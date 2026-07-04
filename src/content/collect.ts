@@ -17,7 +17,7 @@ import { collectJsonLd } from './collectors/jsonld';
 import { collectRendered } from './collectors/rendered';
 import { collectPrimaryCta } from './collectors/cta';
 
-function collectSnapshot(): PageSnapshot {
+export function collectSnapshot(): PageSnapshot {
   const headings = collectHeadings();
   return {
     schemaVersion: 1,
@@ -39,11 +39,16 @@ function collectSnapshot(): PageSnapshot {
   };
 }
 
-chrome.runtime.onMessage.addListener((message: CollectRequest, _sender, sendResponse) => {
-  if (message?.type === 'COLLECT_SNAPSHOT') {
-    sendResponse(collectSnapshot());
-    // Build is synchronous, but return true for safety/consistency per 01-architecture.md.
-    return true;
-  }
-  return undefined;
-});
+// Guarded so the collection routine can be bundled and run in a plain page (Playwright E2E,
+// 08-testing-acceptance.md) where `chrome` is undefined. In the extension, chrome is present
+// and the listener registers exactly as before.
+if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener((message: CollectRequest, _sender, sendResponse) => {
+    if (message?.type === 'COLLECT_SNAPSHOT') {
+      sendResponse(collectSnapshot());
+      // Build is synchronous, but return true for safety/consistency per 01-architecture.md.
+      return true;
+    }
+    return undefined;
+  });
+}
