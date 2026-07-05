@@ -25,13 +25,30 @@ function getContentScriptFile(): string {
   return file;
 }
 
+const INJECT_RETRY_ATTEMPTS = 10;
+const INJECT_RETRY_DELAY_MS = 150;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function collectSnapshot(tabId: number): Promise<PageSnapshot> {
   try {
     return await chrome.tabs.sendMessage(tabId, { type: 'COLLECT_SNAPSHOT' });
   } catch {
-    // No content script present (e.g. page pre-dates install). Inject, then retry once.
+    // No content script present (e.g. page pre-dates install/reload). Inject, then retry.
     await chrome.scripting.executeScript({ target: { tabId }, files: [getContentScriptFile()] });
-    return await chrome.tabs.sendMessage(tabId, { type: 'COLLECT_SNAPSHOT' });
+    // The CRXJS-built content script is a loader that registers its message listener only
+    // after an async import() resolves, so executeScript returning does not mean the
+    // listener exists yet. Poll briefly instead of retrying once.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await chrome.tabs.sendMessage(tabId, { type: 'COLLECT_SNAPSHOT' });
+      } catch (err) {
+        if (attempt >= INJECT_RETRY_ATTEMPTS - 1) throw err;
+        await delay(INJECT_RETRY_DELAY_MS);
+      }
+    }
   }
 }
 

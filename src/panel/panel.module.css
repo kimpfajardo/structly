@@ -1,140 +1,653 @@
+/*
+ * Structly panel — editorial white / Swiss poster style.
+ * Paper + ink, whitespace as the dominant element, one saturated accent used
+ * at most twice per view (primary CTA + wordmark full stop). Oversized muted
+ * numerals anchor sections; type carries hierarchy, rules stay thin except the
+ * two poster-weight rules (header, export footer).
+ *
+ * Type scale: 11 micro / 12 small / 14 body / 19 title / 20 statement / 32 numeral / 84 display.
+ * Spacing: ~2:1 contrast between zone boundaries and within-zone rows.
+ */
+
 .container {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  font-size: 13px;
-  line-height: 1.45;
-  color: #1a1a1a;
-  padding: 12px;
+  --bg: #f7f6f3;
+  --ink: #161616;
+  --muted: #8c8880;
+  --faint: #d8d5ce;
+  --hairline: #e6e4df;
+  --wash: rgba(22, 22, 22, 0.04);
+  --accent: #ff4d00;
+  --accent-dark: #d84200;
+
+  --green: #1a7f37;
+  --blue: #1d4ed8;
+  --amber: #b45309;
+  --red: #d0021b;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--bg);
+  min-height: 100vh;
+  padding: 28px 24px 32px;
+  box-sizing: border-box;
+  max-width: 680px;
+  margin: 0 auto;
+  /* Flex column so the credits footer pins to the bottom on short views
+   * (margin-top: auto on .credits) and trails the content when it scrolls. */
+  display: flex;
+  flex-direction: column;
+  /* Anchors the ::before dot field. isolation creates a stacking context so
+   * the pseudo's z-index: -1 lands between this element's own background and
+   * its content — without it the dots paint underneath the opaque paper
+   * background of the panel and are invisible. */
+  position: relative;
+  isolation: isolate;
 }
+
+/* ---------- corner dot field ----------
+ * Decorative dot grid in the upper right, faded out by a radial mask so it
+ * reads as texture, not a panel. Ink-toned and static: the accent budget and
+ * the motion budget both stay untouched. z-index -1 slots it above the paper
+ * background but beneath all content. */
+.container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 280px;
+  height: 220px;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(var(--muted) 1.5px, transparent 1.5px);
+  background-size: 16px 16px;
+  background-position: top right;
+  opacity: 0.3;
+  -webkit-mask-image: radial-gradient(200px circle at top right, #000 25%, transparent 72%);
+  mask-image: radial-gradient(200px circle at top right, #000 25%, transparent 72%);
+}
+
+/* ---------- animations ----------
+ * On-render motion: fades and fluid ease-outs. Scroll reveals are class-swapped
+ * transitions driven by IntersectionObserver (see .reveal below). The
+ * prefers-reduced-motion block at the end flattens everything.
+ */
+
+@property --pct {
+  syntax: '<number>';
+  initial-value: 0;
+  inherits: false;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes growBar {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes sweep {
+  from {
+    --pct: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- scroll reveal ----------
+ * One-shot: blocks below the fold rise into place as they enter the viewport.
+ * Blocks already visible at mount fire immediately, so the first paint reads as
+ * a single entrance, not a parade.
+ */
+
+.reveal,
+.revealShown {
+  transition: opacity 0.55s var(--ease), transform 0.55s var(--ease);
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+.revealShown {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------- header ---------- */
 
 .header {
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 24px;
+  margin-bottom: 32px;
 }
 
+/* lowercase display wordmark — the accent full stop is one of the two accent
+ * uses this view gets */
 .title {
-  font-size: 15px;
-  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
+  color: var(--ink);
+  margin: 0 0 18px;
+}
+
+.titleDot {
+  color: var(--accent);
+}
+
+.logoMark {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .pageMeta {
-  margin: 0 0 8px;
+  margin: 0 0 20px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  animation: fadeIn 0.2s ease-out both;
 }
 
 .pageTitle {
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pageUrl {
-  color: #666;
+  color: var(--muted);
   font-size: 12px;
-  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
+/* Shared uppercase micro-label; composed by .scoreKicker and others via CSS Modules. */
 .label {
+  font-size: 11px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
 }
 
-.select {
-  font: inherit;
-  padding: 3px 6px;
-}
+/* ---------- buttons ---------- */
 
 .button {
-  font: inherit;
-  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #fff;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 0;
+  padding: 11px 18px;
   cursor: pointer;
-  border: 1px solid #888;
-  background: #f4f4f4;
-  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .button:disabled {
-  opacity: 0.6;
+  opacity: 0.45;
   cursor: default;
 }
 
+.buttonSecondary {
+  composes: button;
+  color: var(--ink);
+  background: transparent;
+  border-color: var(--ink);
+}
+
+.buttonSecondary:hover:not(:disabled) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+
+/* full-width editorial CTA — label left, arrow right */
+.buttonHero {
+  composes: button;
+  width: 100%;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.buttonHero::after {
+  content: '→';
+  font-size: 14px;
+  line-height: 1;
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: currentColor;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ---------- status region ---------- */
+
 .statusRegion {
-  margin-bottom: 10px;
+  margin-bottom: 16px;
   min-height: 1.2em;
 }
 
-.hint {
-  color: #666;
+.statusLoading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
   margin: 0;
+  animation: fadeIn 0.2s ease-out both;
+}
+
+/* idle state — a statement, not a caption */
+.idleHero {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  max-width: 26ch;
+  margin: 12px 0 0;
+  animation: fadeIn 0.2s ease-out both;
+}
+
+.idleHero::before {
+  content: '/ ';
+  color: var(--muted);
+}
+
+.hint {
+  color: var(--muted);
+  margin: 0;
+  animation: fadeIn 0.2s ease-out both;
 }
 
 .error {
-  color: #b00020;
+  color: var(--red);
+  background: transparent;
+  border: none;
+  border-left: 2px solid var(--red);
+  border-radius: 0;
+  padding: 4px 0 4px 12px;
   margin: 0;
+  animation: fadeIn 0.2s ease-out both;
 }
 
+/* ---------- report ---------- */
+
+/* Motion budget: one entrance per state change. The container fades once; the only
+ * things that move afterwards are the score count-up, the bar/ring sweeps, and the
+ * one-shot scroll reveals as sections enter the viewport. */
 .report {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 24px;
+  animation: fadeIn 0.2s ease-out both;
+}
+
+/* verdict hero — the display numeral owns the view */
+.scoreHero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.scoreKicker {
+  composes: label;
+  margin: 0;
 }
 
 .scoreLine {
   margin: 0;
-  font-size: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
 }
 
 .scoreNumber {
-  font-size: 18px;
+  font-size: 84px;
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
 }
+
+/* reference frame for the score — first-run users need the scale anchor */
+.scoreDenominator {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: -8px;
+}
+
+.scoreBand {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.bandStrong {
+  composes: scoreBand;
+  color: var(--green);
+}
+
+.bandGood {
+  composes: scoreBand;
+  color: var(--blue);
+}
+
+.bandModerate {
+  composes: scoreBand;
+  color: var(--amber);
+}
+
+.bandMajor {
+  composes: scoreBand;
+  color: var(--red);
+}
+
+/* ---------- category scores — open table, no rules; the bars carry the rhythm ---------- */
 
 .categoryList {
   list-style: none;
   margin: 0;
-  padding: 8px;
-  border: 1px solid #eee;
-  border-radius: 4px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 18px;
 }
 
+.categoryRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.categoryTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.categoryLabel {
+  font-weight: 600;
+}
+
+.categoryScore {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.barTrack {
+  height: 2px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  transform-origin: left;
+  /* --d inherits from the row, so the bar sweeps in just after its row lands */
+  animation: growBar 0.6s var(--ease) both;
+  animation-delay: calc(var(--d, 0ms) + 180ms);
+}
+
+.barHigh {
+  composes: barFill;
+  background: var(--green);
+}
+
+.barMid {
+  composes: barFill;
+  background: var(--amber);
+}
+
+.barLow {
+  composes: barFill;
+  background: var(--red);
+}
+
+/* ---------- filters ---------- */
+
+/* zone boundary: extra space separates the verdict zone from the issues zone */
 .filters {
   display: flex;
-  gap: 16px;
+  gap: 28px;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
+  margin-top: 16px;
 }
 
+/* Both groups render as label-above-control columns. The status group is a fieldset,
+ * and its legend is special-cased by the browser (never a flex item, always placed
+ * first) — the column layout makes fieldset and div groups look identical. */
 .filterGroup {
   border: none;
   margin: 0;
   padding: 0;
+  min-inline-size: auto;
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
-  align-items: center;
 }
 
-.radioLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+.filterGroup legend {
+  padding: 0;
+  margin: 0 0 8px;
 }
+
+/* Category filter dropdown. This used to live in the header for the page-type
+ * picker; the class is kept here because Report.tsx's category filter shares it. */
+.select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  border-radius: 0;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+
+.select:hover {
+  border-color: var(--ink);
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--hairline);
+}
+
+.segment {
+  position: relative;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
+  user-select: none;
+}
+
+.segment + .segment {
+  border-left: 1px solid var(--hairline);
+}
+
+.segment:hover {
+  color: var(--ink);
+}
+
+.segment:has(.segmentInput:checked) {
+  color: var(--bg);
+  background: var(--ink);
+}
+
+.segment:has(.segmentInput:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.segmentInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* ---------- sections ---------- */
 
 .section {
-  border-top: 1px solid #eee;
-  padding-top: 8px;
+  border-top: 1px solid var(--hairline);
+  padding-top: 28px;
 }
 
+/* editorial section header: oversized muted ordinal + lowercase title + count.
+ * The numeral carries position, not meaning — it stays faint. */
 .sectionTitle {
-  font-size: 13px;
-  margin: 0 0 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0 0 18px;
+}
+
+.sectionIndex {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+}
+
+.sectionName {
+  text-transform: lowercase;
+  flex: 1;
+  min-width: 0;
+}
+
+.sectionCount {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* collapsible sections (AI tab) — same summary anatomy as issue rows */
+.sectionSummary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sectionSummary::-webkit-details-marker {
+  display: none;
+}
+
+.sectionSummary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sectionTitleCollapsible {
+  composes: sectionTitle;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+details[open] > .sectionSummary .chevron {
+  transform: rotate(90deg);
+}
+
+.sectionBody {
+  padding-top: 16px;
 }
 
 .issueList {
@@ -143,32 +656,130 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .issueItem {
-  border: 1px solid #e2e2e2;
-  border-radius: 4px;
-  padding: 6px 8px;
+  transition: background 0.12s ease;
+}
+
+.issueItem:hover {
+  background: var(--wash);
 }
 
 .issueSummary {
   cursor: pointer;
+  padding: 12px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  list-style: none;
+}
+
+.issueSummary::-webkit-details-marker {
+  display: none;
+}
+
+.issueSummary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.chevron {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  transition: transform 0.12s ease;
+}
+
+details[open] > .issueSummary .chevron {
+  transform: rotate(90deg);
 }
 
 .issueTitle {
   font-weight: 600;
+  flex: 1;
+  min-width: 0;
 }
 
-.issueMeta {
-  color: #666;
+/* ---------- chips — borderless, type does the work ---------- */
+
+.chips {
+  display: inline-flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.chip {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: none;
+  background: transparent;
+  padding: 0;
+  white-space: nowrap;
+}
+
+/* severity reads as plain muted text — status is the single colored voice per row,
+ * so red/amber pop only where triage needs them */
+.chipHigh {
+  composes: chip;
+  color: var(--muted);
+}
+
+.chipMedium {
+  composes: chip;
+  color: var(--muted);
+}
+
+.chipLow {
+  composes: chip;
+  color: var(--muted);
+}
+
+.chipFail {
+  composes: chip;
+  color: var(--red);
+}
+
+.chipWarn {
+  composes: chip;
+  color: var(--amber);
+}
+
+.chipInfo {
+  composes: chip;
+  color: var(--blue);
+}
+
+.chipPass {
+  composes: chip;
+  color: var(--green);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .issueDetail {
-  margin-top: 8px;
+  padding: 4px 10px 18px 38px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+}
+
+details[open] .issueDetail {
+  animation: fadeUp 0.3s var(--ease) both;
 }
 
 .issueDetail p {
@@ -177,6 +788,7 @@
 
 .detailLabel {
   font-weight: 600;
+  color: var(--muted);
 }
 
 .evidenceList {
@@ -184,20 +796,639 @@
   padding-left: 18px;
 }
 
-.copyButton {
-  align-self: flex-start;
-  font: inherit;
-  padding: 2px 8px;
-  margin-top: 4px;
-  cursor: pointer;
-  border: 1px solid #888;
-  background: #f4f4f4;
-  border-radius: 3px;
+.issueActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
+.copyButton {
+  align-self: flex-start;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding: 6px 12px;
+  margin-top: 8px;
+  cursor: pointer;
+  border: 1px solid var(--hairline);
+  border-radius: 0;
+  background: transparent;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.copyButton:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.copyButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.copied {
+  composes: copyButton;
+  color: var(--green);
+  border-color: var(--green);
+}
+
+.copied:hover {
+  color: var(--green);
+  border-color: var(--green);
+}
+
+/* ---------- exports — poster-footer meta strip ---------- */
+
+/* actions zone: one primary decision up top, then quiet label/link columns,
+ * closed by the second poster-weight rule of the view */
 .exportButtons {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  border-top: 2px solid var(--ink);
+  padding-top: 20px;
+  margin-top: 16px;
+}
+
+.exportGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.exportLabel {
+  composes: label;
+  min-width: 84px;
+}
+
+.textButton {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.12s ease;
+}
+
+.textButton:hover {
+  color: var(--ink);
+}
+
+.textButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.textButtonCopied {
+  composes: textButton;
+  color: var(--green);
+}
+
+.textButtonCopied:hover {
+  color: var(--green);
+}
+
+/* ---------- stale result banner ---------- */
+
+.staleBanner {
+  border: none;
+  border-left: 3px solid var(--amber);
+  border-radius: 0;
+  padding: 6px 0 6px 14px;
+  margin-bottom: 20px;
+  animation: fadeIn 0.2s ease-out both;
+}
+
+.staleText {
+  margin: 0 0 12px;
+}
+
+.staleOldUrl {
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.staleNewUrl {
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.staleActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ---------- result tabs ---------- */
+
+.tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 32px;
+  animation: fadeIn 0.2s ease-out both;
+}
+
+.tab {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 10px 0;
+  margin-bottom: -1px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  border-top: 1px solid #eee;
-  padding-top: 10px;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* active tab reads as ink, not accent — the accent budget belongs to the CTA */
+.tabActive {
+  composes: tab;
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.tabBadge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  border: none;
+  padding: 0;
+}
+
+/* ---------- AI search view ---------- */
+
+.aiView {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.2s ease-out both;
+}
+
+/* key takeaway — a statement, not a slab */
+
+.takeaway {
+  border-left: 3px solid var(--ink);
+}
+
+.takeawayText {
+  margin: 0;
+  padding: 4px 0 4px 16px;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.disclaimer {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 16px;
+}
+
+.assistantList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.assistantCard {
+  border: 1px solid var(--hairline);
+  border-radius: 0;
+  padding: 20px;
+  background: transparent;
+}
+
+.assistantHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.assistantMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.assistantName {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.assistantBlurb {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* likelihood ring — flat two-color hard stop; --pct is set inline (0..100) */
+
+.ring {
+  --pct: 0;
+  --ring-color: var(--muted);
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(
+    var(--ring-color) calc(var(--pct) * 1%),
+    var(--hairline) 0
+  );
+  /* --pct is a registered @property, so the fill sweeps from 0 to its inline value */
+  animation: sweep 0.9s var(--ease) both;
+  animation-delay: calc(var(--d, 0ms) + 120ms);
+}
+
+.ring::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+.ringValue {
+  position: relative;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ringHigh {
+  composes: ring;
+  --ring-color: var(--green);
+}
+
+.ringMid {
+  composes: ring;
+  --ring-color: var(--amber);
+}
+
+.ringLow {
+  composes: ring;
+  --ring-color: var(--red);
+}
+
+/* simulated citation card — how the page appears inside an AI answer */
+
+.citationCard {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: none;
+  border-left: 2px solid var(--hairline);
+  border-radius: 0;
+  padding: 6px 0 6px 14px;
+  background: transparent;
+}
+
+.citationLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.citationTitle {
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.citationUrl {
+  display: flex;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Head clips from the right (keeping the origin) with an ellipsis; tail never shrinks,
+   so the page slug stays visible. Together they middle-truncate long URLs to one line. */
+.citationUrlHead {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.citationUrlTail {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.citationSnippet {
+  margin: 6px 0 0;
+  color: var(--ink);
+}
+
+.blockerList {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.blockerItem {
+  font-size: 12px;
+  color: var(--amber);
+  border-left: 2px solid var(--amber);
+  padding-left: 12px;
+}
+
+/* citation signals — open table, no rules */
+
+.signalList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.signalRow {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.signalTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.signalLabel {
+  font-weight: 600;
+}
+
+.signalScore {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.signalDetail {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.signalBar {
+  height: 100%;
+  transform-origin: left;
+  animation: growBar 0.6s var(--ease) both;
+  animation-delay: calc(var(--d, 0ms) + 180ms);
+}
+
+.signalBarHigh {
+  composes: signalBar;
+  background: var(--green);
+}
+
+.signalBarMid {
+  composes: signalBar;
+  background: var(--amber);
+}
+
+.signalBarLow {
+  composes: signalBar;
+  background: var(--red);
+}
+
+/* query fan-out chips */
+
+.fanoutList {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fanoutChip {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--hairline);
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 5px 12px;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.fanoutChip:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+/* pillars + skip list */
+
+.pillarList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pillarGuidance {
+  margin: 0;
+  padding: 4px 0 4px 14px;
+  border-left: 2px solid var(--hairline);
+  color: var(--muted);
+}
+
+.pillarSources {
+  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.sourceLink {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sourceLink:hover {
+  color: var(--accent-dark);
+}
+
+.sourceLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.skipList {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--muted);
+}
+
+/* ---------- credits footer ----------
+ * Quietest element in the panel: hairline rule (the two poster-weight rules
+ * belong to the header and export strip), micro type, muted icons that only
+ * reach ink on hover. Outer padding guarantees breathing room above the rule
+ * even when the content overflows and margin-top: auto collapses to zero. */
+
+.credits {
+  margin-top: auto;
+  padding-top: 40px;
+}
+
+.creditsInner {
+  border-top: 1px solid var(--hairline);
+  padding-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;
+  flex-wrap: wrap;
+}
+
+.creditsActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* tip CTA — same quiet voice as .copyButton: hairline border, muted micro
+ * caps, ink on hover. Deliberately not accent; the audit CTA owns that. */
+.tipButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid var(--hairline);
+  padding: 6px 11px;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.tipButton:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.tipButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tipIcon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.creditsText {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.creditsName {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.creditsLinks {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.creditsLink {
+  display: inline-flex;
+  color: var(--muted);
+  /* 15px glyphs; padding grows the hit area without shifting the row */
+  padding: 5px;
+  margin: -5px 0;
+  transition: color 0.12s ease;
+}
+
+.creditsLink:hover {
+  color: var(--ink);
+}
+
+.creditsLink:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.creditsIcon {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+/* ---------- reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .container *,
+  .container *::before,
+  .container *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

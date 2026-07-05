@@ -6,3 +6,4 @@ vite.config.ts.timestamp-*.mjs
 test-results/
 playwright-report/
 playwright/.cache/
+.preview/

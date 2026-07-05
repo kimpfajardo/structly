@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { AuditIssue } from '../../core/types';
+import { buildIssueFixPrompt, type PromptPageContext } from '../../core/export/prompt';
+import { Chevron } from './Chevron';
 import styles from '../panel.module.css';
 
 // Plain-text block copied by the "Copy" button — all fields, labeled (06-ui-panel.md).
@@ -17,15 +19,29 @@ function issueToText(issue: AuditIssue): string {
   return parts.join('\n');
 }
 
-export function IssueItem({ issue }: { issue: AuditIssue }) {
-  const [copied, setCopied] = useState(false);
+// Chips supplement color with text; severity/status remain readable as text per 06.
+const SEVERITY_CHIP: Record<AuditIssue['severity'], string | undefined> = {
+  high: styles.chipHigh,
+  medium: styles.chipMedium,
+  low: styles.chipLow,
+};
 
-  function handleCopy(): void {
+const STATUS_CHIP: Record<AuditIssue['status'], string | undefined> = {
+  fail: styles.chipFail,
+  warn: styles.chipWarn,
+  info: styles.chipInfo,
+  pass: styles.chipPass,
+};
+
+export function IssueItem({ issue, page }: { issue: AuditIssue; page: PromptPageContext }) {
+  const [copied, setCopied] = useState<'text' | 'prompt' | null>(null);
+
+  function handleCopy(target: 'text' | 'prompt', text: string): void {
     navigator.clipboard
-      .writeText(issueToText(issue))
+      .writeText(text)
       .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+        setCopied(target);
+        setTimeout(() => setCopied((current) => (current === target ? null : current)), 1500);
       })
       .catch(() => {
         // Clipboard may be unavailable; fail quietly.
@@ -36,18 +52,22 @@ export function IssueItem({ issue }: { issue: AuditIssue }) {
     <li className={styles.issueItem}>
       <details>
         <summary className={styles.issueSummary}>
-          <span className={styles.issueTitle}>{issue.title}</span>{' '}
-          <span className={styles.issueMeta}>
-            severity: {issue.severity}, status: {issue.status}
+          <Chevron />
+          <span className={styles.issueTitle}>{issue.title}</span>
+          <span className={styles.chips}>
+            <span className={SEVERITY_CHIP[issue.severity]}>
+              <span className={styles.srOnly}>severity: </span>
+              {issue.severity}
+            </span>
+            <span className={STATUS_CHIP[issue.status]}>
+              <span className={styles.srOnly}>status: </span>
+              {issue.status}
+            </span>
           </span>
         </summary>
         <div className={styles.issueDetail}>
-          <p>
-            <span className={styles.detailLabel}>Severity:</span> {issue.severity}
-          </p>
-          <p>
-            <span className={styles.detailLabel}>Status:</span> {issue.status}
-          </p>
+          {/* Severity/status stay visible in the summary chips above (and in the copied
+              text block) — repeating them here doubled the scan cost for no new info. */}
           <p>
             <span className={styles.detailLabel}>Why it matters:</span> {issue.whyItMatters}
           </p>
@@ -67,9 +87,23 @@ export function IssueItem({ issue }: { issue: AuditIssue }) {
               <span className={styles.detailLabel}>Selectors:</span> {issue.selectors.join(', ')}
             </p>
           )}
-          <button className={styles.copyButton} onClick={handleCopy}>
-            {copied ? 'Copied' : 'Copy'}
-          </button>
+          <div className={styles.issueActions}>
+            <button
+              className={copied === 'text' ? styles.copied : styles.copyButton}
+              onClick={() => handleCopy('text', issueToText(issue))}
+            >
+              {copied === 'text' ? 'Copied ✓' : 'Copy'}
+            </button>
+            {issue.status !== 'info' && (
+              <button
+                className={copied === 'prompt' ? styles.copied : styles.copyButton}
+                title="Copy an LLM-ready prompt to fix this finding"
+                onClick={() => handleCopy('prompt', buildIssueFixPrompt(issue, page))}
+              >
+                {copied === 'prompt' ? 'Copied ✓' : 'Copy fix prompt'}
+              </button>
+            )}
+          </div>
         </div>
       </details>
     </li>
