@@ -1421,6 +1421,204 @@ details[open] .issueDetail {
   display: block;
 }
 
+/* ---------- responsive: compact (≤480px) ----------
+ * Side panels dock as narrow as ~280px and this UI is also reused as mobile web.
+ * One breakpoint: below 480px we tighten the frame (padding + oversized type) and
+ * grow touch targets; the tab views add their own row-stacking below. Above 480px the
+ * base editorial layout is untouched (content still caps at 680px). Foundations owns the
+ * shared chrome here — container, header, buttons, tabs, sections; tab views own the rest. */
+@media (max-width: 480px) {
+  .container {
+    padding: 20px 16px 28px;
+  }
+
+  /* Decorative dot field: shrink so it stays texture, not a panel, on a narrow width. */
+  .container::before {
+    width: 150px;
+    height: 130px;
+    -webkit-mask-image: radial-gradient(120px circle at top right, #000 25%, transparent 72%);
+    mask-image: radial-gradient(120px circle at top right, #000 25%, transparent 72%);
+  }
+
+  .header {
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+  }
+
+  .title {
+    font-size: 21px;
+    margin-bottom: 14px;
+  }
+
+  /* Touch: header actions fill the row and clear a 44px tap target. */
+  .controls .button {
+    flex: 1 1 auto;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .idleHero {
+    font-size: 18px;
+  }
+
+  /* Tabs stay on one row but each gets a 44px tap height. */
+  .tabs {
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  .tab {
+    min-height: 44px;
+    padding: 12px 0;
+  }
+
+  /* Sections: dial the oversized ordinals and titles down one step, tighten the rule gap. */
+  .section {
+    padding-top: 20px;
+  }
+
+  .sectionTitle {
+    font-size: 17px;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .sectionIndex {
+    font-size: 24px;
+  }
+
+  /* Issue rows: taller tap target for touch. */
+  .issueSummary {
+    padding: 14px 8px;
+  }
+}
+
+/* ---------- report tab: compact (≤480px) ---------- */
+@media (max-width: 480px) {
+  /* Verdict numeral: 84px is the widest element in the view at 320px viewports.
+   * ~52px (-38%) keeps "100" + "/100" + band label on one comfortable baseline. */
+  .scoreNumber {
+    font-size: 52px;
+  }
+
+  /* Category rows: let the label wrap instead of squeezing the score off-row.
+   * baseline alignment reads oddly once a label wraps to two lines, so switch
+   * to flex-start; the score keeps nowrap (short "12/20" strings) and gets a
+   * hairline top gutter so it doesn't visually collide with a wrapped label. */
+  .categoryTop {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .categoryLabel {
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+
+  /* Filters: stack both groups full-width; status segments and the category
+   * select both need to clear a 44px tap target on touch. */
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+
+  .filterGroup {
+    width: 100%;
+  }
+
+  .segmented {
+    display: flex;
+    width: 100%;
+  }
+
+  .segment {
+    flex: 1 1 0;
+    min-height: 44px;
+    padding: 0 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .select {
+    width: 100%;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+
+  /* Exports footer: let label + links wrap onto their own line rather than
+   * compressing against the 84px label column at 320px. */
+  .exportGroup {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .exportLabel {
+    min-width: 100%;
+  }
+
+  /* Stale banner CTA uses the base .button primitive (not .buttonHero, not
+   * .controls .button), so the foundations compact rule doesn't reach it.
+   * Scope to this container only — don't touch the shared .button itself. */
+  .staleActions .button {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+}
+
+/* ---------- AI search tab: compact (≤480px) ---------- */
+@media (max-width: 480px) {
+  .takeawayText {
+    font-size: 17px;
+  }
+
+  .assistantCard {
+    padding: 16px;
+  }
+
+  /* Ring + name/blurb wrap onto their own line; the meta column can drop the
+     tier chip below when space runs out instead of crushing it against the ring. */
+  .assistantHead {
+    flex-wrap: wrap;
+    gap: 10px 12px;
+  }
+
+  .assistantMeta {
+    flex-basis: 0;
+  }
+
+  .ring {
+    width: 40px;
+    height: 40px;
+  }
+
+  .ringValue {
+    font-size: 11px;
+  }
+
+  .citationCard {
+    padding: 6px 0 6px 12px;
+  }
+
+  /* Label + score wrap instead of the score getting squeezed against long labels. */
+  .signalTop {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+
+  .fanoutChip {
+    padding: 5px 10px;
+  }
+
+  .pillarSources {
+    gap: 10px 14px;
+  }
+}
+
 /* ---------- reduced motion ---------- */
 
 @media (prefers-reduced-motion: reduce) {
