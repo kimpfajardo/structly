@@ -1,30 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { AuditIssue, AuditReport, PageSnapshot } from '../../core/types';
 import { buildAiSearchInsights } from '../../core/aiSearch/insights';
 import type { PillarStatus } from '../../core/aiSearch/insights';
-import { buildCitationPreview } from '../../core/aiSearch/citationPreview';
-import type { CitationTier } from '../../core/aiSearch/citationPreview';
-import { useCountUp } from '../useCountUp';
+import { buildReadinessAssessment } from '../../core/readiness/readiness';
+import type { ReadinessState } from '../../core/readiness/readiness';
 import { Chevron } from './Chevron';
 import { Reveal } from './Reveal';
 import styles from '../panel.module.css';
-
-// AEO/GEO view — everything here is derived locally from the finalized snapshot and the
-// fixed 24-rule output. No network calls; the citation preview is a labeled simulation.
-
-const TIER_LABEL: Record<CitationTier, string> = {
-  strong: 'likely cited',
-  possible: 'possibly cited',
-  weak: 'unlikely cited',
-  excluded: 'excluded',
-};
-
-function tierChipClass(tier: CitationTier): string | undefined {
-  if (tier === 'strong') return styles.chipPass;
-  if (tier === 'possible') return styles.chipInfo;
-  if (tier === 'weak') return styles.chipWarn;
-  return styles.chipFail;
-}
 
 function pillarChipClass(status: PillarStatus): string | undefined {
   if (status === 'ready') return styles.chipPass;
@@ -32,249 +14,220 @@ function pillarChipClass(status: PillarStatus): string | undefined {
   return styles.chipFail;
 }
 
-function ringClass(likelihood: number, tier: CitationTier): string | undefined {
-  if (tier === 'excluded' || likelihood < 55) return styles.ringLow;
-  if (likelihood < 80) return styles.ringMid;
-  return styles.ringHigh;
+function readinessClass(state: ReadinessState): string | undefined {
+  if (state === 'supported') return styles.chipPass;
+  if (state === 'blocked') return styles.chipFail;
+  return styles.chipInfo;
 }
 
-function signalBarClass(score: number): string | undefined {
-  if (score >= 0.85) return styles.signalBarHigh;
-  if (score >= 0.5) return styles.signalBarMid;
-  return styles.signalBarLow;
-}
-
-// Count-up needs a hook, and hooks can't live inside a map callback.
-function RingValue({ likelihood }: { likelihood: number }) {
-  return <span className={styles.ringValue}>{useCountUp(likelihood)}</span>;
-}
-
-// Citation URLs can be arbitrarily long. Keep the origin (left) and the tail of the path
-// (the last URL_TAIL_CHARS) visible and let the middle collapse — the head span clips with a
-// CSS ellipsis that reads as the delimiter, so the source domain and page slug both stay
-// readable at any panel width. Full URL stays on the title for hover/inspection.
-const URL_TAIL_CHARS = 12;
-
-function CitationUrl({ url }: { url: string }) {
-  const head = url.slice(0, -URL_TAIL_CHARS);
-  const tail = url.slice(-URL_TAIL_CHARS);
-  return (
-    <span className={styles.citationUrl} title={url}>
-      <span className={styles.citationUrlHead}>{head}</span>
-      <span className={styles.citationUrlTail}>{tail}</span>
-    </span>
-  );
+function readinessLabel(state: ReadinessState): string {
+  if (state === 'supported') return 'supported';
+  if (state === 'blocked') return 'blocked';
+  if (state === 'unverifiable-locally') return 'not verifiable locally';
+  return 'needs observed data';
 }
 
 export function AiSearchView({
   snapshot,
   report,
+  questions,
+  onQuestionsChange,
 }: {
   snapshot: PageSnapshot;
   report: AuditReport;
+  questions: string[];
+  onQuestionsChange: (questions: string[]) => void;
 }) {
+  const [draftQuestion, setDraftQuestion] = useState('');
   const issues = useMemo<AuditIssue[]>(
-    () => report.categories.flatMap((c) => c.issues),
+    () => report.categories.flatMap((category) => category.issues),
     [report],
   );
   const insights = useMemo(() => buildAiSearchInsights(snapshot, issues), [snapshot, issues]);
-  const preview = useMemo(() => buildCitationPreview(snapshot, issues), [snapshot, issues]);
+  const purpose = snapshot.pageType;
+  const assessment = useMemo(
+    () => buildReadinessAssessment({ snapshot, purpose, questions }),
+    [snapshot, purpose, questions],
+  );
+
+  function addQuestion(): void {
+    const question = draftQuestion.trim();
+    if (!question || questions.length >= 3 || questions.includes(question)) return;
+    onQuestionsChange([...questions, question]);
+    setDraftQuestion('');
+  }
 
   return (
     <div className={styles.aiView}>
-      {/* Static text: the word-by-word reveal kept the eye chasing motion for ~900ms
-          while rings and bars were also animating — one moving system at a time. */}
       <div className={styles.takeaway}>
-        <p className={styles.takeawayText}>{insights.keyTakeaway}</p>
+        <p className={styles.takeawayText}>
+          {purpose !== 'unknown'
+            ? `This is a local readiness check for a ${purpose} page. It shows what the page structurally delivers; it does not predict rankings, citations, traffic, or completed actions.`
+            : 'This local readiness check shows what the page structurally delivers without assuming a page type. It does not predict rankings, citations, traffic, or completed actions.'}
+        </p>
       </div>
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>
           <span className={styles.sectionIndex}>01</span>
-          <span className={styles.sectionName}>How AI assistants may surface this page</span>
+          <span className={styles.sectionName}>Readiness conditions</span>
         </h2>
-        <p className={styles.disclaimer}>{preview.disclaimer}</p>
-        <ul className={styles.assistantList}>
-          {preview.assistants.map((a, i) => (
-            <li
-              key={a.profileId}
-              className={styles.assistantCard}
-              style={{ '--d': `${i * 110}ms` } as React.CSSProperties}
-            >
-              <div className={styles.assistantHead}>
-                <div
-                  className={ringClass(a.likelihood, a.tier)}
-                  style={{ '--pct': a.likelihood, '--d': `${i * 110}ms` } as React.CSSProperties}
-                  role="img"
-                  aria-label={`${a.name} citation likelihood ${a.likelihood} out of 100`}
-                >
-                  <RingValue likelihood={a.likelihood} />
-                </div>
-                <div className={styles.assistantMeta}>
-                  <span className={styles.assistantName}>{a.name}</span>
-                  <span className={styles.assistantBlurb}>{a.blurb}</span>
-                </div>
-                <span className={tierChipClass(a.tier)}>{TIER_LABEL[a.tier]}</span>
+        <ul className={styles.readinessConditions}>
+          {assessment.conditions.map((condition) => (
+            <li key={condition.id} className={styles.readinessCondition}>
+              <div className={styles.readinessConditionTop}>
+                <span>{condition.label}</span>
+                <span className={readinessClass(condition.state)}>
+                  {readinessLabel(condition.state)}
+                </span>
               </div>
-
-              <div className={styles.citationCard}>
-                <span className={styles.citationLabel}>cited as</span>
-                <span className={styles.citationTitle}>{a.displayTitle}</span>
-                <CitationUrl url={a.displayUrl} />
-                <p className={styles.citationSnippet}>{a.snippet}</p>
-              </div>
-
-              {a.blockers.length > 0 && (
-                <ul className={styles.blockerList}>
-                  {a.blockers.map((b, i) => (
-                    <li key={i} className={styles.blockerItem}>
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <p>{condition.detail}</p>
             </li>
           ))}
         </ul>
       </section>
 
-      {/* Sections 2–5 are collapsed by default (progressive disclosure): the takeaway
-          and assistant previews answer the headline question; the rest is on demand. */}
       <Reveal>
-      <details className={styles.section}>
-        <summary className={styles.sectionSummary}>
-          <Chevron />
-          <h2 className={styles.sectionTitleCollapsible}>
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>
             <span className={styles.sectionIndex}>02</span>
-            <span className={styles.sectionName}>Citation signals</span>
+            <span className={styles.sectionName}>Question coverage</span>
           </h2>
-        </summary>
-        <div className={styles.sectionBody}>
-        <ul className={styles.signalList}>
-          {preview.signals.map((s, i) => (
-            <li
-              key={s.id}
-              className={styles.signalRow}
-              style={{ '--d': `${i * 70}ms` } as React.CSSProperties}
-            >
-              <div className={styles.signalTop}>
-                <span className={styles.signalLabel}>{s.label}</span>
-                <span className={styles.signalScore}>{Math.round(s.score * 100)}/100</span>
-              </div>
-              <div className={styles.barTrack} aria-hidden="true">
-                <div className={signalBarClass(s.score)} style={{ width: `${s.score * 100}%` }} />
-              </div>
-              <span className={styles.signalDetail}>{s.detail}</span>
-            </li>
-          ))}
-        </ul>
-        </div>
-      </details>
+          <p className={styles.hint}>
+            Add up to three questions this page must make easy to answer. Structly checks where their meaningful terms appear; it does not judge answer quality.
+          </p>
+          <div className={styles.questionEntry}>
+            <label className={styles.srOnly} htmlFor="readiness-question">
+              A question this page should answer
+            </label>
+            <input
+              id="readiness-question"
+              className={styles.questionInput}
+              value={draftQuestion}
+              onChange={(event) => setDraftQuestion(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  addQuestion();
+                }
+              }}
+              placeholder="What should this page answer?"
+              disabled={questions.length >= 3}
+            />
+            <button className={styles.copyButton} onClick={addQuestion} disabled={questions.length >= 3}>
+              Add
+            </button>
+          </div>
+          {assessment.questionCoverage.items.length === 0 ? (
+            <p className={styles.hint}>No questions added yet.</p>
+          ) : (
+            <ul className={styles.questionList}>
+              {assessment.questionCoverage.items.map((item) => (
+                <li key={item.question} className={styles.questionItem}>
+                  <div>
+                    <span>{item.question}</span>
+                    <small>
+                      {item.matchedIn.length > 0
+                        ? `Found in ${item.matchedIn.join(' and ')}`
+                        : 'No meaningful terms found in the captured page evidence'}
+                    </small>
+                  </div>
+                  <div className={styles.questionActions}>
+                    <span className={readinessClass(item.state === 'structurally-covered' ? 'supported' : item.state === 'mentioned' ? 'unverifiable-locally' : 'blocked')}>
+                      {item.state.replace('-', ' ')}
+                    </span>
+                    <button
+                      className={styles.textButton}
+                      onClick={() => onQuestionsChange(questions.filter((question) => question !== item.question))}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </Reveal>
 
-      {preview.fanOutQueries.length > 0 && (
+      {assessment.actionPath && (
         <Reveal>
-        <details className={styles.section}>
-          <summary className={styles.sectionSummary}>
-            <Chevron />
-            <h2 className={styles.sectionTitleCollapsible}>
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>
               <span className={styles.sectionIndex}>03</span>
-              <span className={styles.sectionName}>Query fan-out coverage</span>
+              <span className={styles.sectionName}>Action path</span>
             </h2>
-          </summary>
-          <div className={styles.sectionBody}>
-          <p className={styles.hint}>
-            Google's AI features issue related sub-queries ("query fan-out"). Based on its
-            headings, this page can be retrieved for:
-          </p>
-          <ul className={styles.fanoutList}>
-            {preview.fanOutQueries.map((q, i) => (
-              <li key={i} className={styles.fanoutChip}>
-                {q}
-              </li>
-            ))}
-          </ul>
-          </div>
-        </details>
+            <p className={styles.actionPathDetail}>{assessment.actionPath.detail}</p>
+            <p className={styles.hint}>
+              {assessment.actionPath.labeledFormControls} labeled form control(s), {assessment.actionPath.unlabeledFormControls} unlabeled.
+            </p>
+          </section>
         </Reveal>
       )}
 
       <Reveal>
-      <details className={styles.section}>
-        <summary className={styles.sectionSummary}>
-          <Chevron />
-          <h2 className={styles.sectionTitleCollapsible}>
-            <span className={styles.sectionIndex}>04</span>
-            <span className={styles.sectionName}>AEO / GEO readiness</span>
-          </h2>
-        </summary>
-        <div className={styles.sectionBody}>
-        <p className={styles.hint}>Per Google Search Central's published guidance.</p>
-        <ul className={styles.pillarList}>
-          {insights.pillars.map((p) => (
-            <li key={p.id} className={styles.issueItem}>
-              <details>
-                <summary className={styles.issueSummary}>
-                  <span className={styles.issueTitle}>{p.title}</span>
-                  <span className={pillarChipClass(p.status)}>{p.status}</span>
-                </summary>
-                <div className={styles.issueDetail}>
-                  <p className={styles.pillarGuidance}>{p.guidance}</p>
-                  <div>
-                    <span className={styles.detailLabel}>On this page:</span>
-                    <ul className={styles.evidenceList}>
-                      {p.findings.map((f, i) => (
-                        <li key={i}>{f}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <span className={styles.detailLabel}>Recommendations:</span>
-                    <ul className={styles.evidenceList}>
-                      {p.recommendations.map((r, i) => (
-                        <li key={i}>{r}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <p className={styles.pillarSources}>
-                    {p.sources.map((s) => (
-                      <a
-                        key={s.url}
-                        className={styles.sourceLink}
-                        href={s.url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {s.label}
-                      </a>
-                    ))}
-                  </p>
-                </div>
-              </details>
-            </li>
-          ))}
-        </ul>
-        </div>
-      </details>
+        <details className={styles.section}>
+          <summary className={styles.sectionSummary}>
+            <Chevron />
+            <h2 className={styles.sectionTitleCollapsible}>
+              <span className={styles.sectionIndex}>{assessment.actionPath ? '04' : '03'}</span>
+              <span className={styles.sectionName}>Google guidance</span>
+            </h2>
+          </summary>
+          <div className={styles.sectionBody}>
+            <ul className={styles.pillarList}>
+              {insights.pillars.map((pillar) => (
+                <li key={pillar.id} className={styles.issueItem}>
+                  <details>
+                    <summary className={styles.issueSummary}>
+                      <span className={styles.issueTitle}>{pillar.title}</span>
+                      <span className={pillarChipClass(pillar.status)}>{pillar.status}</span>
+                    </summary>
+                    <div className={styles.issueDetail}>
+                      <p className={styles.pillarGuidance}>{pillar.guidance}</p>
+                      <div>
+                        <span className={styles.detailLabel}>On this page:</span>
+                        <ul className={styles.evidenceList}>
+                          {pillar.findings.map((finding, index) => <li key={index}>{finding}</li>)}
+                        </ul>
+                      </div>
+                      <div>
+                        <span className={styles.detailLabel}>Recommendations:</span>
+                        <ul className={styles.evidenceList}>
+                          {pillar.recommendations.map((recommendation, index) => <li key={index}>{recommendation}</li>)}
+                        </ul>
+                      </div>
+                      <p className={styles.pillarSources}>
+                        {pillar.sources.map((source) => (
+                          <a key={source.url} className={styles.sourceLink} href={source.url} target="_blank" rel="noreferrer">
+                            {source.label}
+                          </a>
+                        ))}
+                      </p>
+                    </div>
+                  </details>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
       </Reveal>
 
       <Reveal>
-      <details className={styles.section}>
-        <summary className={styles.sectionSummary}>
-          <Chevron />
-          <h2 className={styles.sectionTitleCollapsible}>
-            <span className={styles.sectionIndex}>05</span>
-            <span className={styles.sectionName}>Per Google, you can skip</span>
-          </h2>
-        </summary>
-        <div className={styles.sectionBody}>
-        <ul className={styles.skipList}>
-          {insights.skipList.map((s, i) => (
-            <li key={i}>{s}</li>
-          ))}
-        </ul>
-        </div>
-      </details>
+        <details className={styles.section}>
+          <summary className={styles.sectionSummary}>
+            <Chevron />
+            <h2 className={styles.sectionTitleCollapsible}>
+              <span className={styles.sectionIndex}>{assessment.actionPath ? '05' : '04'}</span>
+              <span className={styles.sectionName}>What Google says you can skip</span>
+            </h2>
+          </summary>
+          <div className={styles.sectionBody}>
+            <ul className={styles.skipList}>
+              {insights.skipList.map((item, index) => <li key={index}>{item}</li>)}
+            </ul>
+          </div>
+        </details>
       </Reveal>
     </div>
   );

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+  width="200"
+  height="200"
+  viewBox="0 0 200 200"
+  role="img"
+  aria-label="Structly logo">
+<g transform="translate(0.0000 0.0000) scale(1.000000)">
+  <path d="M 128.2720 32.9159 A 76.5000 76.5000 0 1 0 171.5836 77.0179"
+        fill="none"
+        stroke="#FFFFFF"
+        stroke-width="10.5"
+        stroke-linecap="round"/>
+  <path d="M 81 122 L 156 38 L 165 48.5 Z" fill="#FFFFFF"/>
+  <circle cx="166.5" cy="36.8" r="12.0" fill="#FFFFFF"/>
+</g>
+
+</svg>

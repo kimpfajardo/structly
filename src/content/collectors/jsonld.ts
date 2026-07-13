@@ -14,9 +14,9 @@ export function collectJsonLd(): JsonLdBlock[] {
   });
 }
 
-// Collect @type values at the top level and within an @graph array (if present). @type may be
-// a string or an array of strings. Flatten to a unique string array. Top level + @graph only;
-// nested non-graph objects are ignored.
+// Collect @type values from a top-level object or array and within an @graph array (if present).
+// @type may be a string or an array of strings. Flatten to a unique string array. Nested
+// non-graph objects are ignored.
 export function extractTypes(value: unknown): string[] {
   const types: string[] = [];
 
@@ -30,7 +30,11 @@ export function extractTypes(value: unknown): string[] {
     }
   };
 
-  addTypeOf(value);
+  if (Array.isArray(value)) {
+    for (const node of value) addTypeOf(node);
+  } else {
+    addTypeOf(value);
+  }
 
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     const graph = (value as Record<string, unknown>)['@graph'];

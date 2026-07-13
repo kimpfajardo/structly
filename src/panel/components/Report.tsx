@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import type { AuditReport, CategoryId } from '../../core/types';
+import type { AuditReport, CategoryId, PageSnapshot, PageType } from '../../core/types';
 import { exportJson } from '../../core/export/json';
 import { exportMarkdown } from '../../core/export/markdown';
 import { actionableIssues, buildFixPrompt } from '../../core/export/prompt';
+import { CTA_EXPECTED_TYPES, SCHEMA_EXPECTED_TYPES, SUMMARY_EXPECTED_TYPES } from '../../core/rules/constants';
 import { IssueItem } from './IssueItem';
 import { Reveal } from './Reveal';
+import { RecheckReceipt } from './RecheckReceipt';
+import { SurfaceabilityEvidence } from './SurfaceabilityEvidence';
+import { Select } from './Select';
 import { useCountUp } from '../useCountUp';
 import styles from '../panel.module.css';
 
@@ -62,13 +66,43 @@ function downloadText(content: string, filename: string, mime: string): void {
 
 type CopyTarget = 'prompt' | 'md' | 'json';
 
-export function Report({ report }: { report: AuditReport }) {
+const PURPOSE_LABELS: Record<PageType, string> = {
+  marketing: 'marketing',
+  product: 'product',
+  article: 'article',
+  docs: 'documentation',
+  account: 'account',
+  unknown: 'unconfirmed',
+};
+
+function purposeSummary(pageType: PageType): string {
+  if (pageType === 'unknown') {
+    return 'Page type: Not identified. Shared page checks applied.';
+  }
+  const checks = [
+    SUMMARY_EXPECTED_TYPES.includes(pageType) && 'top summary',
+    CTA_EXPECTED_TYPES.includes(pageType) && 'named primary action',
+    SCHEMA_EXPECTED_TYPES.includes(pageType) && 'structured-data expectation',
+  ].filter(Boolean);
+  return `Assessed as ${PURPOSE_LABELS[pageType]}. This applies checks for ${checks.join(', ') || 'the shared page basics'}; findings only change when a relevant condition is missing.`;
+}
+
+export function Report({
+  report,
+  snapshot,
+  recheck,
+}: {
+  report: AuditReport;
+  snapshot: PageSnapshot;
+  recheck: { before: { report: AuditReport; snapshot: PageSnapshot }; after: { report: AuditReport; snapshot: PageSnapshot } } | null;
+}) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryId | 'all'>('all');
   const [copied, setCopied] = useState<CopyTarget | null>(null);
   const animatedScore = useCountUp(report.overallScore);
 
   const hasActionable = actionableIssues(report).length > 0;
+  const priorities = actionableIssues(report).slice(0, 3);
 
   function handleCopy(target: CopyTarget, text: string): void {
     navigator.clipboard
@@ -100,6 +134,31 @@ export function Report({ report }: { report: AuditReport }) {
           <span className={bandClass(report.overallScore)}>{report.band}</span>
         </p>
       </header>
+
+      <p className={styles.purposeAssessment}>{purposeSummary(report.pageType)}</p>
+
+      {recheck && <RecheckReceipt before={recheck.before} after={recheck.after} />}
+
+      <section className={styles.fixFirst} aria-labelledby="fix-first-title">
+        <p className={styles.scoreKicker}>Fix first</p>
+        <h2 id="fix-first-title" className={styles.fixFirstTitle}>
+          {priorities.length > 0
+            ? 'The smallest set of changes that will improve this page now'
+            : 'No failing or warning findings need attention'}
+        </h2>
+        {priorities.length > 0 && (
+          <ol className={styles.fixFirstList}>
+            {priorities.map((issue) => (
+              <li key={issue.id}>
+                <span>{issue.title}</span>
+                <span>{issue.scoreImpact} point impact</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+
+      <SurfaceabilityEvidence snapshot={snapshot} />
 
       <ul className={styles.categoryList}>
         {report.categories.map((c, i) => (
@@ -146,24 +205,19 @@ export function Report({ report }: { report: AuditReport }) {
           </div>
         </fieldset>
 
-        <div className={styles.filterGroup}>
-          <label className={styles.label} htmlFor="category-filter">
-            Category
-          </label>
-          <select
-            id="category-filter"
-            className={styles.select}
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value as CategoryId | 'all')}
-          >
-            <option value="all">All categories</option>
-            {report.categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          id="category-filter"
+          label="Category"
+          value={categoryFilter}
+          options={[
+            { value: 'all', label: 'All categories' },
+            ...report.categories.map((category) => ({
+              value: category.id,
+              label: category.label,
+            })),
+          ]}
+          onChange={setCategoryFilter}
+        />
       </div>
 
       {groups.length === 0 ? (

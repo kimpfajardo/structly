@@ -50,7 +50,15 @@ export function Credits() {
     <footer className={styles.credits}>
       <div className={styles.creditsInner}>
         <p className={styles.creditsText}>
-          Built by <span className={styles.creditsName}>Kim Fajardo</span>
+          Built by{' '}
+          <a
+            className={styles.creditsName}
+            href="https://www.devkpf.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Kim Fajardo
+          </a>
         </p>
         <div className={styles.creditsActions}>
           <a

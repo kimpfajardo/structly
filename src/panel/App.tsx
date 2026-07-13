@@ -9,7 +9,8 @@ import { scoreAudit } from '../core/scoring/score';
 import { Report } from './components/Report';
 import { AiSearchView } from './components/AiSearchView';
 import { Credits } from './components/Credits';
-import logoMark from './assets/logo-mark.png';
+import logoBlack from '../../public/icons/structly-guiding-light-icon-black.svg';
+import logoWhite from '../../public/icons/structly-guiding-light-icon-white.svg';
 import styles from './panel.module.css';
 
 // Long URLs get middle-truncated for display in flowing text (the stale banner), keeping the
@@ -26,10 +27,8 @@ function truncateMiddle(value: string, max = INLINE_URL_MAX): string {
 }
 
 // The panel is the only stateful client (01-architecture.md). On AUDIT_RESULT it finalizes the
-// snapshot (raw metrics + auto-detected page type), validates it, runs the rules, and scores the
-// report. Page type is classified from the snapshot (detectPageType); there is no manual control.
-// The snapshot is kept alongside the report so the AI Search tab can derive its insights
-// locally without re-running the audit.
+// snapshot (raw metrics + an initial page-purpose guess), validates it, runs the rules, and
+// scores the report. The snapshot stays beside the report for local readiness checks.
 
 type View =
   | { kind: 'idle' }
@@ -38,6 +37,15 @@ type View =
   | { kind: 'error'; message: string };
 
 type ResultTab = 'audit' | 'ai';
+type Theme = 'light' | 'dark';
+type AuditResult = Extract<View, { kind: 'result' }>;
+
+function buildResult(snapshot: PageSnapshot): AuditResult {
+  const issues = ALL_RULES.map((rule) => rule(snapshot)).filter(
+    (issue): issue is AuditIssue => issue !== null,
+  );
+  return { kind: 'result', report: scoreAudit(snapshot, issues), snapshot };
+}
 
 async function readActiveTab(): Promise<{ title: string; url: string } | null> {
   try {
@@ -50,12 +58,30 @@ async function readActiveTab(): Promise<{ title: string; url: string } | null> {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState<Theme>(() =>
+    typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light',
+  );
   const [view, setView] = useState<View>({ kind: 'idle' });
   const [pageInfo, setPageInfo] = useState<{ title: string; url: string } | null>(null);
   const [tab, setTab] = useState<ResultTab>('audit');
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [recheck, setRecheck] = useState<{
+    before: AuditResult;
+    after: AuditResult;
+  } | null>(null);
   // Monotonic audit run id. Bumped on every audit and on reset so replies from a
   // superseded or cancelled run are ignored instead of overwriting current state.
   const runId = useRef(0);
+  const latestResult = useRef<AuditResult | null>(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    return () => {
+      delete document.documentElement.dataset.theme;
+    };
+  }, [theme]);
 
   // Regather context: the side panel outlives tab switches and in-tab navigations, so
   // keep the header's page info in sync with the active tab instead of reading it once.
@@ -86,6 +112,20 @@ export default function App() {
   }, []);
 
   // Runs on the AUDIT_RESULT / AUDIT_ERROR reply from the service worker.
+  function publishResult(next: AuditResult): void {
+    const previous = latestResult.current;
+    if (previous?.report.pageUrl === next.report.pageUrl) {
+      setRecheck({ before: previous, after: next });
+    } else {
+      setRecheck(null);
+      setQuestions([]);
+    }
+    latestResult.current = next;
+    setView(next);
+    setTab('audit');
+    setPageInfo({ title: next.report.pageTitle, url: next.report.pageUrl });
+  }
+
   function finalize(response: unknown): void {
     const parsed = PanelInboundMessageSchema.safeParse(response);
     if (!parsed.success) {
@@ -102,20 +142,16 @@ export default function App() {
       raw: parseRawHtml(parsed.data.rawHtmlString, new DOMParser()),
       pageType: 'unknown',
     };
-    // Page type is always classified from the snapshot (JSON-LD, URL, forms) — no manual pick.
-    const finalized: PageSnapshot = { ...collected, pageType: detectPageType(collected) };
+    const finalized: PageSnapshot = {
+      ...collected,
+      pageType: detectPageType(collected),
+    };
     if (!PageSnapshotSchema.safeParse(finalized).success) {
       setView({ kind: 'error', message: 'The finalized page snapshot failed validation.' });
       return;
     }
 
-    const issues = ALL_RULES.map((rule) => rule(finalized)).filter(
-      (issue): issue is AuditIssue => issue !== null,
-    );
-    const report = scoreAudit(finalized, issues);
-    setView({ kind: 'result', report, snapshot: finalized });
-    setTab('audit');
-    setPageInfo({ title: report.pageTitle, url: report.pageUrl });
+    publishResult(buildResult(finalized));
   }
 
   async function handleAudit(): Promise<void> {
@@ -146,6 +182,9 @@ export default function App() {
 
   function handleReset(): void {
     runId.current++; // drop any in-flight audit reply
+    latestResult.current = null;
+    setRecheck(null);
+    setQuestions([]);
     setView({ kind: 'idle' });
     setTab('audit');
     void readActiveTab().then((info) => {
@@ -160,16 +199,40 @@ export default function App() {
       ? pageInfo.url
       : null;
 
+  function handleTabKeyDown(event: React.KeyboardEvent<HTMLButtonElement>): void {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    const next = tab === 'audit' ? 'ai' : 'audit';
+    setTab(next);
+    event.currentTarget.parentElement
+      ?.querySelector<HTMLButtonElement>(next === 'audit' ? '#audit-tab' : '#readiness-tab')
+      ?.focus();
+  }
+
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-theme={theme}>
       <header className={styles.header}>
-        <h1 className={styles.title}>
-          {/* 32px source rendered at 18px so it stays crisp on 2x displays */}
-          <img className={styles.logoMark} src={logoMark} alt="" />
-          <span>
-            structly<span className={styles.titleDot} aria-hidden="true">.</span>
-          </span>
-        </h1>
+        <div className={styles.brandRow}>
+          <h1 className={styles.title}>
+            <img
+              className={styles.wordmark}
+              src={theme === 'dark' ? logoWhite : logoBlack}
+              alt=""
+              aria-hidden="true"
+            />
+            <span className={styles.brandName}>Structly</span>
+          </h1>
+          <button
+            className={styles.themeToggle}
+            type="button"
+            role="switch"
+            aria-checked={theme === 'dark'}
+            aria-label="Dark mode"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            <span className={styles.themeToggleThumb} />
+          </button>
+        </div>
         {pageInfo && (
           <p className={styles.pageMeta}>
             <span className={styles.pageTitle}>{pageInfo.title || 'Untitled page'}</span>
@@ -231,27 +294,43 @@ export default function App() {
         <>
           <div className={styles.tabs} role="tablist" aria-label="Result views">
             <button
+              id="audit-tab"
               className={tab === 'audit' ? styles.tabActive : styles.tab}
               role="tab"
               aria-selected={tab === 'audit'}
+              aria-controls="audit-panel"
+              tabIndex={tab === 'audit' ? 0 : -1}
               onClick={() => setTab('audit')}
+              onKeyDown={handleTabKeyDown}
             >
               Audit report
             </button>
             <button
+              id="readiness-tab"
               className={tab === 'ai' ? styles.tabActive : styles.tab}
               role="tab"
               aria-selected={tab === 'ai'}
+              aria-controls="readiness-panel"
+              tabIndex={tab === 'ai' ? 0 : -1}
               onClick={() => setTab('ai')}
+              onKeyDown={handleTabKeyDown}
             >
-              AI Search
-              <span className={styles.tabBadge}>AEO/GEO</span>
+              AI readiness
             </button>
           </div>
           {tab === 'audit' ? (
-            <Report report={view.report} />
+            <div id="audit-panel" role="tabpanel" aria-labelledby="audit-tab">
+              <Report report={view.report} snapshot={view.snapshot} recheck={recheck} />
+            </div>
           ) : (
-            <AiSearchView snapshot={view.snapshot} report={view.report} />
+            <div id="readiness-panel" role="tabpanel" aria-labelledby="readiness-tab">
+              <AiSearchView
+                snapshot={view.snapshot}
+                report={view.report}
+                questions={questions}
+                onQuestionsChange={setQuestions}
+              />
+            </div>
           )}
         </>
       )}

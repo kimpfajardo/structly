@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { act } from 'react-dom/test-utils';
+import { act } from 'react';
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 import { createRoot } from 'react-dom/client';
@@ -16,30 +16,40 @@ function renderView(snapshot = makeSnapshot()) {
   const container = document.createElement('div');
   document.body.appendChild(container);
   act(() => {
-    createRoot(container).render(<AiSearchView snapshot={snapshot} report={report} />);
+    createRoot(container).render(
+      <AiSearchView snapshot={snapshot} report={report} questions={[]} onQuestionsChange={() => {}} />,
+    );
   });
   return container;
 }
 
 describe('AiSearchView', () => {
-  it('renders assistant previews, signals, pillars, and the skip list without crashing', () => {
+  it('renders local readiness conditions, question coverage, and Google guidance', () => {
     const container = renderView();
     const text = container.textContent ?? '';
-    expect(text).toContain('Google AI Overviews');
-    expect(text).toContain('Google AI Mode');
-    expect(text).toContain('Browsing chat assistants');
-    expect(text).toContain('Citation signals');
-    expect(text).toContain('AEO / GEO readiness');
-    expect(text).toContain('Per Google, you can skip');
-    expect(text).toContain('Simulated preview');
-    // Simulated citation card shows the page's own metadata.
-    expect(text).toContain('Example Product — Fast, Simple, Reliable');
+    expect(text).toContain('local readiness check');
+    expect(text).toContain('Readiness conditions');
+    expect(text).toContain('Question coverage');
+    expect(text).toContain('Action path');
+    expect(text).toContain('Google guidance');
+    expect(text).toContain('What Google says you can skip');
+    expect(text).not.toContain('citation likelihood');
   });
 
-  it('shows the exclusion state for a noindexed page', () => {
+  it('keeps noindex as an explicit Google-guidance blocker', () => {
     const container = renderView(makeSnapshot({ meta: { robots: 'noindex' } }));
     const text = container.textContent ?? '';
-    expect(text).toContain('excluded');
     expect(text).toContain('noindex');
+  });
+
+  it('keeps universal readiness available for an unknown page type', () => {
+    const container = renderView(makeSnapshot({ pageType: 'unknown' }));
+    const text = container.textContent ?? '';
+
+    expect(text).toContain('without assuming a page type');
+    expect(text).toContain('Readiness conditions');
+    expect(text).toContain('Question coverage');
+    expect(text).not.toContain('Action path');
+    expect(text).not.toContain('readiness conditions are unavailable');
   });
 });

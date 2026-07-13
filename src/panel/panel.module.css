@@ -48,6 +48,27 @@
   isolation: isolate;
 }
 
+.container[data-theme='light'] {
+  color-scheme: light;
+}
+
+.container[data-theme='dark'] {
+  --bg: #161616;
+  --ink: #f7f6f3;
+  --muted: #aaa69e;
+  --faint: #55524d;
+  --hairline: #363532;
+  --wash: rgba(247, 246, 243, 0.06);
+  --accent-dark: #ff6a2b;
+
+  --green: #62c87a;
+  --blue: #7da2ff;
+  --amber: #f1a64b;
+  --red: #ff6675;
+
+  color-scheme: dark;
+}
+
 /* ---------- corner dot field ----------
  * Decorative dot grid in the upper right, faded out by a radial mask so it
  * reads as texture, not a panel. Ink-toned and static: the accent budget and
@@ -76,12 +97,6 @@
  * prefers-reduced-motion block at the end flattens everything.
  */
 
-@property --pct {
-  syntax: '<number>';
-  initial-value: 0;
-  inherits: false;
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -108,12 +123,6 @@
   }
   to {
     transform: scaleX(1);
-  }
-}
-
-@keyframes sweep {
-  from {
-    --pct: 0;
   }
 }
 
@@ -152,28 +161,83 @@
   margin-bottom: 32px;
 }
 
-/* lowercase display wordmark — the accent full stop is one of the two accent
- * uses this view gets */
-.title {
+.brandRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wordmark {
+  display: block;
+  width: 48px;
+  height: auto;
+}
+
+.brandName {
+  color: var(--ink);
   font-size: 24px;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  text-transform: lowercase;
-  color: var(--ink);
-  margin: 0 0 18px;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  background: linear-gradient(to bottom, var(--ink) 55%, transparent 160%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.titleDot {
-  color: var(--accent);
+@media (forced-colors: active) {
+  .brandName {
+    background: none;
+    color: CanvasText;
+    -webkit-text-fill-color: CanvasText;
+  }
 }
 
-.logoMark {
+.themeToggle {
+  width: 44px;
+  height: 24px;
+  padding: 2px;
+  background: var(--faint);
+  border: 1px solid var(--muted);
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.themeToggle:hover {
+  border-color: var(--ink);
+}
+
+.themeToggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.themeToggleThumb {
+  display: block;
   width: 18px;
   height: 18px;
-  flex-shrink: 0;
+  background: var(--ink);
+  border-radius: 0;
+  transition: transform 0.15s var(--ease);
+}
+
+.themeToggle[aria-checked='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.themeToggle[aria-checked='true'] .themeToggleThumb {
+  transform: translateX(20px);
 }
 
 .pageMeta {
@@ -340,7 +404,7 @@
 /* ---------- report ---------- */
 
 /* Motion budget: one entrance per state change. The container fades once; the only
- * things that move afterwards are the score count-up, the bar/ring sweeps, and the
+ * things that move afterwards are the score count-up, the category bar sweeps, and the
  * one-shot scroll reveals as sections enter the viewport. */
 .report {
   display: flex;
@@ -386,11 +450,58 @@
   margin-left: -8px;
 }
 
+.purposeAssessment {
+  border-left: 2px solid var(--hairline);
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+  padding-left: 12px;
+}
+
 .scoreBand {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.fixFirst {
+  border-top: 1px solid var(--hairline);
+  padding-top: 24px;
+}
+
+.fixFirstTitle {
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  margin: 6px 0 14px;
+}
+
+.fixFirstList {
+  border-top: 1px solid var(--hairline);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fixFirstList li {
+  align-items: baseline;
+  border-bottom: 1px solid var(--hairline);
+  display: flex;
+  font-size: 12px;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.fixFirstList li span:first-child {
+  font-weight: 600;
+}
+
+.fixFirstList li span:last-child {
+  color: var(--muted);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .bandStrong {
@@ -507,34 +618,122 @@
   margin: 0 0 8px;
 }
 
-/* Category filter dropdown. This used to live in the header for the page-type
- * picker; the class is kept here because Report.tsx's category filter shares it. */
-.select {
-  font: inherit;
-  color: var(--ink);
+.selectControl {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.selectPicker {
+  position: relative;
+  width: 260px;
+  max-width: 100%;
+}
+
+.selectTrigger {
+  align-items: center;
   background: var(--bg);
   border: 1px solid var(--hairline);
   border-radius: 0;
-  padding: 8px 12px;
+  box-sizing: border-box;
+  color: var(--ink);
   cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 40px;
+  padding: 8px 12px;
+  text-align: left;
   transition: border-color 0.12s ease;
+  width: 100%;
 }
 
-.select:hover {
+.selectTrigger:hover {
   border-color: var(--ink);
 }
 
-.select:focus-visible {
+.selectTrigger:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.selectChevron {
+  border-bottom: 1px solid currentColor;
+  border-right: 1px solid currentColor;
+  flex-shrink: 0;
+  height: 7px;
+  transform: rotate(45deg) translateY(-2px);
+  width: 7px;
+}
+
+.selectTrigger[aria-expanded='true'] .selectChevron {
+  transform: rotate(225deg) translate(-2px, -2px);
+}
+
+.selectPopover {
+  background: var(--bg);
+  border: 1px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--faint);
+  color: var(--ink);
+  inset: calc(100% + 4px) 0 auto;
+  list-style: none;
+  margin: 0;
+  max-height: min(280px, 45vh);
+  overflow-y: auto;
+  padding: 4px 0;
+  position: absolute;
+  width: 100%;
+  z-index: 10;
+}
+
+.selectOption {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 8px 12px;
+}
+
+.selectOption:hover,
+.selectOption[data-active='true'] {
+  background: var(--wash);
+}
+
+.selectOption[aria-selected='true'] {
+  box-shadow: inset 3px 0 var(--accent);
+  font-weight: 700;
+}
+
+@media (forced-colors: active) {
+  .selectTrigger,
+  .selectPopover {
+    border-color: CanvasText;
+  }
+
+  .selectPopover {
+    box-shadow: none;
+  }
+
+  .selectOption[aria-selected='true'] {
+    box-shadow: inset 3px 0 Highlight;
+  }
 }
 
 .segmented {
   display: inline-flex;
   border: 1px solid var(--hairline);
+  box-sizing: border-box;
+  min-height: 40px;
 }
 
 .segment {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
   position: relative;
   padding: 6px 12px;
   font-size: 11px;
@@ -995,6 +1194,74 @@ details[open] .issueDetail {
   animation: fadeIn 0.2s ease-out both;
 }
 
+.readinessConditions,
+.questionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.readinessConditions {
+  border-top: 1px solid var(--hairline);
+}
+
+.readinessCondition,
+.questionItem {
+  border-bottom: 1px solid var(--hairline);
+  padding: 10px 0;
+}
+
+.readinessConditionTop,
+.questionItem,
+.questionActions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.readinessConditionTop > span:first-child,
+.questionItem > div:first-child {
+  font-weight: 600;
+}
+
+.readinessCondition p,
+.actionPathDetail {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 5px 0 0;
+}
+
+.questionEntry {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.questionInput {
+  background: transparent;
+  border: 1px solid var(--faint);
+  border-radius: 0;
+  color: var(--ink);
+  flex: 1;
+  font: inherit;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.questionInput:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.questionItem small {
+  color: var(--muted);
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 3px;
+}
+
 /* key takeaway — a statement, not a slab */
 
 .takeaway {
@@ -1009,264 +1276,6 @@ details[open] .issueDetail {
   line-height: 1.45;
   letter-spacing: -0.01em;
   color: var(--ink);
-}
-
-.disclaimer {
-  color: var(--muted);
-  font-size: 12px;
-  margin: 0 0 16px;
-}
-
-.assistantList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.assistantCard {
-  border: 1px solid var(--hairline);
-  border-radius: 0;
-  padding: 20px;
-  background: transparent;
-}
-
-.assistantHead {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-
-.assistantMeta {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.assistantName {
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.assistantBlurb {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-/* likelihood ring — flat two-color hard stop; --pct is set inline (0..100) */
-
-.ring {
-  --pct: 0;
-  --ring-color: var(--muted);
-  position: relative;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  background: conic-gradient(
-    var(--ring-color) calc(var(--pct) * 1%),
-    var(--hairline) 0
-  );
-  /* --pct is a registered @property, so the fill sweeps from 0 to its inline value */
-  animation: sweep 0.9s var(--ease) both;
-  animation-delay: calc(var(--d, 0ms) + 120ms);
-}
-
-.ring::before {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  background: var(--bg);
-}
-
-.ringValue {
-  position: relative;
-  font-size: 12px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.ringHigh {
-  composes: ring;
-  --ring-color: var(--green);
-}
-
-.ringMid {
-  composes: ring;
-  --ring-color: var(--amber);
-}
-
-.ringLow {
-  composes: ring;
-  --ring-color: var(--red);
-}
-
-/* simulated citation card — how the page appears inside an AI answer */
-
-.citationCard {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  border: none;
-  border-left: 2px solid var(--hairline);
-  border-radius: 0;
-  padding: 6px 0 6px 14px;
-  background: transparent;
-}
-
-.citationLabel {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
-.citationTitle {
-  font-weight: 700;
-  color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.citationUrl {
-  display: flex;
-  min-width: 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-/* Head clips from the right (keeping the origin) with an ellipsis; tail never shrinks,
-   so the page slug stays visible. Together they middle-truncate long URLs to one line. */
-.citationUrlHead {
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.citationUrlTail {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.citationSnippet {
-  margin: 6px 0 0;
-  color: var(--ink);
-}
-
-.blockerList {
-  list-style: none;
-  margin: 14px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.blockerItem {
-  font-size: 12px;
-  color: var(--amber);
-  border-left: 2px solid var(--amber);
-  padding-left: 12px;
-}
-
-/* citation signals — open table, no rules */
-
-.signalList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.signalRow {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.signalTop {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.signalLabel {
-  font-weight: 600;
-}
-
-.signalScore {
-  color: var(--muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.signalDetail {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.signalBar {
-  height: 100%;
-  transform-origin: left;
-  animation: growBar 0.6s var(--ease) both;
-  animation-delay: calc(var(--d, 0ms) + 180ms);
-}
-
-.signalBarHigh {
-  composes: signalBar;
-  background: var(--green);
-}
-
-.signalBarMid {
-  composes: signalBar;
-  background: var(--amber);
-}
-
-.signalBarLow {
-  composes: signalBar;
-  background: var(--red);
-}
-
-/* query fan-out chips */
-
-.fanoutList {
-  list-style: none;
-  margin: 14px 0 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.fanoutChip {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border: 1px solid var(--hairline);
-  border-radius: 0;
-  background: transparent;
-  color: var(--muted);
-  padding: 5px 12px;
-  transition: color 0.12s ease, border-color 0.12s ease;
-}
-
-.fanoutChip:hover {
-  color: var(--ink);
-  border-color: var(--ink);
 }
 
 /* pillars + skip list */
@@ -1389,6 +1398,17 @@ details[open] .issueDetail {
 .creditsName {
   color: var(--ink);
   font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.creditsName:hover {
+  color: var(--accent-dark);
+}
+
+.creditsName:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .creditsLinks {
@@ -1447,7 +1467,7 @@ details[open] .issueDetail {
 
   .title {
     font-size: 21px;
-    margin-bottom: 14px;
+    margin-bottom: 0;
   }
 
   /* Touch: header actions fill the row and clear a 44px tap target. */
@@ -1517,7 +1537,7 @@ details[open] .issueDetail {
   }
 
   /* Filters: stack both groups full-width; status segments and the category
-   * select both need to clear a 44px tap target on touch. */
+   * selector both need to clear a 44px tap target on touch. */
   .filters {
     flex-direction: column;
     align-items: stretch;
@@ -1530,21 +1550,23 @@ details[open] .issueDetail {
 
   .segmented {
     display: flex;
+    min-height: 44px;
     width: 100%;
   }
 
   .segment {
     flex: 1 1 0;
-    min-height: 44px;
     padding: 0 6px;
-    display: flex;
-    align-items: center;
     justify-content: center;
     text-align: center;
   }
 
-  .select {
+  .selectControl,
+  .selectPicker {
     width: 100%;
+  }
+
+  .selectTrigger {
     min-height: 44px;
     box-sizing: border-box;
   }
