@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { AuditReport, CategoryId, PageSnapshot, PageType } from '../../core/types';
 import { exportJson } from '../../core/export/json';
 import { exportMarkdown } from '../../core/export/markdown';
+import { exportPageEvidenceMarkdown } from '../../core/export/pageEvidenceMarkdown';
 import { actionableIssues, buildFixPrompt } from '../../core/export/prompt';
 import { CTA_EXPECTED_TYPES, SCHEMA_EXPECTED_TYPES, SUMMARY_EXPECTED_TYPES } from '../../core/rules/constants';
 import { IssueItem } from './IssueItem';
@@ -22,7 +23,11 @@ const STATUS_LABELS: Record<StatusFilter, string> = {
 };
 
 // Filename per 07-exports.md: audit-<hostname>-<YYYYMMDD>-<HHmmss>.<ext>, timestamp in UTC.
-function buildFilename(report: AuditReport, ext: 'md' | 'json'): string {
+function buildFilename(
+  report: AuditReport,
+  ext: 'md' | 'json',
+  prefix = 'audit',
+): string {
   let hostname = 'page';
   try {
     hostname = new URL(report.pageUrl).hostname || 'page';
@@ -34,7 +39,7 @@ function buildFilename(report: AuditReport, ext: 'md' | 'json'): string {
   const stamp =
     `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}` +
     `-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;
-  return `audit-${hostname}-${stamp}.${ext}`;
+  return `${prefix}-${hostname}-${stamp}.${ext}`;
 }
 
 // Visual supplements only — band/severity/status are always rendered as text per 06.
@@ -64,7 +69,7 @@ function downloadText(content: string, filename: string, mime: string): void {
   URL.revokeObjectURL(url);
 }
 
-type CopyTarget = 'prompt' | 'md' | 'json';
+type CopyTarget = 'prompt' | 'md' | 'json' | 'evidence';
 
 const PURPOSE_LABELS: Record<PageType, string> = {
   marketing: 'marketing',
@@ -261,8 +266,8 @@ export function Report({
         >
           {copied === 'prompt' ? 'Copied ✓' : 'Copy AI Fix Prompt'}
         </button>
-        {/* Same five functions, one visual decision: the primary action keeps button
-            weight; copy/download variants are quiet text links grouped by verb. */}
+        {/* One visual decision: the primary action keeps button weight; copy/download
+            variants are quiet text links grouped by verb. */}
         <div className={styles.exportGroup}>
           <span className={styles.exportLabel}>Copy</span>
           <button
@@ -276,6 +281,13 @@ export function Report({
             onClick={() => handleCopy('json', exportJson(report))}
           >
             {copied === 'json' ? 'Copied ✓' : 'JSON'}
+          </button>
+          <button
+            className={copied === 'evidence' ? styles.textButtonCopied : styles.textButton}
+            title="Copy the limited page evidence captured by this audit"
+            onClick={() => handleCopy('evidence', exportPageEvidenceMarkdown(snapshot))}
+          >
+            {copied === 'evidence' ? 'Copied ✓' : 'Page evidence'}
           </button>
         </div>
         <div className={styles.exportGroup}>
@@ -295,6 +307,19 @@ export function Report({
             }
           >
             JSON
+          </button>
+          <button
+            className={styles.textButton}
+            title="Download the limited page evidence captured by this audit"
+            onClick={() =>
+              downloadText(
+                exportPageEvidenceMarkdown(snapshot),
+                buildFilename(report, 'md', 'page-evidence'),
+                'text/markdown',
+              )
+            }
+          >
+            Page evidence
           </button>
         </div>
       </div>

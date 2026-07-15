@@ -60,8 +60,7 @@ function has(issues: AuditIssue[], ids: string[]): AuditIssue[] {
 }
 
 function statusFrom(matched: AuditIssue[]): PillarStatus {
-  if (matched.some((i) => i.status === 'fail' || i.status === 'warn')) return 'attention';
-  return 'ready';
+  return matched.length > 0 ? 'attention' : 'ready';
 }
 
 function issueFindings(matched: AuditIssue[]): string[] {
@@ -154,12 +153,16 @@ export function buildAiSearchInsights(
     if (matched.length === 0 && snapshot.raw.available)
       findings.push('Main content is present in the initial HTML — retrievable without JavaScript execution.');
     const recommendations =
-      matched.length > 0
+      !snapshot.raw.available
         ? [
-            'Server-render or statically generate the primary content so it exists in the raw HTML. Google\'s AI features use retrieval (RAG) over indexed pages — "make sure important content is available in textual form".',
-            'Follow Google\'s JavaScript SEO basics if the page must stay client-rendered.',
+            'Retry the audit or inspect the raw HTML directly before judging whether primary content is available without JavaScript.',
           ]
-        : ['No action needed; keep primary content in the initial HTML payload.'];
+        : matched.length > 0
+          ? [
+              'Server-render or statically generate the primary content so it exists in the raw HTML. Google\'s AI features use retrieval (RAG) over indexed pages — "make sure important content is available in textual form".',
+              'Follow Google\'s JavaScript SEO basics if the page must stay client-rendered.',
+            ]
+          : ['No action needed; keep primary content in the initial HTML payload.'];
 
     pillars.push({
       id: 'grounding',
@@ -211,13 +214,20 @@ export function buildAiSearchInsights(
         ? 'No JSON-LD found on the page.'
         : `${validBlocks}/${snapshot.jsonLd.length} JSON-LD block(s) parse as valid JSON.`,
     );
+    const actionable = matched.some((i) => i.status === 'fail' || i.status === 'warn');
     const recommendations =
-      matched.length > 0
+      actionable
         ? [
             'Fix invalid JSON-LD and prefer recognized schema.org types. Note Google\'s framing: structured data is not required for AI features, but it keeps you eligible for rich results.',
             'Ensure structured data matches the visible text on the page — mismatches violate Google\'s structured data policies.',
           ]
-        : ['Structured data is in good shape. No AI-specific schema exists — do not add "special" AI markup.'];
+        : matched.length > 0
+          ? [
+              'Review whether a recognized schema.org type fits this page. Structured data is optional for AI features, so do not add markup solely to claim AI readiness.',
+            ]
+          : [
+              'Structured data is in good shape. No AI-specific schema exists — do not add "special" AI markup.',
+            ];
 
     pillars.push({
       id: 'context',

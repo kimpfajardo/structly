@@ -73,4 +73,11 @@ describe('App', () => {
     expect(container.firstElementChild?.getAttribute('data-theme')).toBe('dark');
     expect(toggle.getAttribute('aria-checked')).toBe('true');
   });
+
+  it('offers page evidence copy and download actions', () => {
+    const actions = [...container.querySelectorAll('button')].filter(
+      (button) => button.textContent === 'Page evidence',
+    );
+    expect(actions).toHaveLength(2);
+  });
 });

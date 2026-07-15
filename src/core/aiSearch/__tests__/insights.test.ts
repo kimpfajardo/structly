@@ -54,6 +54,25 @@ describe('buildAiSearchInsights', () => {
     expect(grounding?.relatedIssueIds.length).toBeGreaterThan(0);
   });
 
+  it('marks grounding as unverified when raw HTML is unavailable', () => {
+    const snapshot = makeSnapshot({
+      raw: { available: false, mainTextLength: 0, bodyTextLength: 0 },
+    });
+    const insights = buildAiSearchInsights(snapshot, runRules(snapshot));
+    const grounding = insights.pillars.find((p) => p.id === 'grounding');
+    expect(grounding?.status).toBe('attention');
+    expect(grounding?.recommendations.join(' ')).toContain('before judging');
+    expect(grounding?.recommendations.join(' ')).not.toContain('No action needed');
+  });
+
+  it('does not mark informational structured-data evidence as ready', () => {
+    const snapshot = makeSnapshot({ pageType: 'docs', jsonLd: [] });
+    const insights = buildAiSearchInsights(snapshot, runRules(snapshot));
+    const context = insights.pillars.find((p) => p.id === 'context');
+    expect(context?.status).toBe('attention');
+    expect(context?.recommendations.join(' ')).not.toContain('good shape');
+  });
+
   it('surfaces Google\'s skip list verbatim', () => {
     const snapshot = makeSnapshot();
     const insights = buildAiSearchInsights(snapshot, runRules(snapshot));
