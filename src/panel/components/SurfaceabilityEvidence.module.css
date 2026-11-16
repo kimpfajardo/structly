@@ -1,100 +1,45 @@
-.section {
-  border-top: 1px solid var(--hairline);
-  padding-top: 28px;
-}
-
+.section { margin-top: 16px; }
 .header {
   display: flex;
-  align-items: flex-start;
+  flex-wrap: wrap;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 16px;
+  gap: 8px 12px;
 }
-
-.kicker,
-.detail > span {
-  margin: 0;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .title {
-  margin: 4px 0 0;
-  color: var(--ink);
-  font-size: 19px;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-
-.status {
-  flex-shrink: 0;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.statusDelivered {
-  composes: status;
-  color: var(--green);
-}
-
-.statusAttention {
-  composes: status;
-  color: var(--amber);
-}
-
-.statusUnknown {
-  composes: status;
-  color: var(--blue);
-}
-
-.summary {
-  margin: 16px 0;
-  font-size: 16px;
-  line-height: 1.45;
-}
-
-.metrics {
   margin: 0;
-  border-top: 1px solid var(--hairline);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
 }
-
+.status { flex-shrink: 0; font-size: 12px; font-weight: 500; }
+.statusDelivered { composes: status; color: var(--green); }
+.statusAttention { composes: status; color: var(--amber); }
+.statusUnknown { composes: status; color: var(--blue); }
+.summary { margin: 8px 0 12px; font-size: 13px; }
+.metrics { margin: 0; }
 .metric {
   display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 16px;
-  padding: 10px 0;
-}
-
-.metric + .metric {
+  gap: 4px 12px;
+  padding: 8px 0;
   border-top: 1px solid var(--hairline);
+  font-size: 13px;
 }
-
-.metric dt {
-  color: var(--muted);
-}
-
-.metric dd {
-  margin: 0;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
+.metric dt { color: var(--muted); }
+.metric dd { margin: 0; font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
 .detail {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
 }
-
-.fixDirection {
-  margin: 8px 0 0;
-  padding-left: 12px;
-  border-left: 2px solid var(--hairline);
-  color: var(--muted);
-}
+.detail > span { color: var(--muted); }
+.detail strong { font-weight: 500; }
+.fixDirection { margin: 8px 0 0; color: var(--muted); font-size: 13px; }

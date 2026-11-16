@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AuditReport, CategoryId, PageSnapshot, PageType } from '../../core/types';
 import { exportJson } from '../../core/export/json';
 import { exportMarkdown } from '../../core/export/markdown';
@@ -6,11 +6,10 @@ import { exportPageEvidenceMarkdown } from '../../core/export/pageEvidenceMarkdo
 import { actionableIssues, buildFixPrompt } from '../../core/export/prompt';
 import { CTA_EXPECTED_TYPES, SCHEMA_EXPECTED_TYPES, SUMMARY_EXPECTED_TYPES } from '../../core/rules/constants';
 import { IssueItem } from './IssueItem';
-import { Reveal } from './Reveal';
+import { Chevron } from './Chevron';
 import { RecheckReceipt } from './RecheckReceipt';
 import { SurfaceabilityEvidence } from './SurfaceabilityEvidence';
 import { Select } from './Select';
-import { useCountUp } from '../useCountUp';
 import styles from '../panel.module.css';
 
 type StatusFilter = 'all' | 'fail' | 'warn' | 'info';
@@ -40,21 +39,6 @@ function buildFilename(
     `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}` +
     `-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;
   return `${prefix}-${hostname}-${stamp}.${ext}`;
-}
-
-// Visual supplements only — band/severity/status are always rendered as text per 06.
-function bandClass(score: number): string | undefined {
-  if (score >= 90) return styles.bandStrong;
-  if (score >= 75) return styles.bandGood;
-  if (score >= 50) return styles.bandModerate;
-  return styles.bandMajor;
-}
-
-function barClass(score: number, maxScore: number): string | undefined {
-  const ratio = maxScore > 0 ? score / maxScore : 0;
-  if (ratio >= 0.85) return styles.barHigh;
-  if (ratio >= 0.5) return styles.barMid;
-  return styles.barLow;
 }
 
 function downloadText(content: string, filename: string, mime: string): void {
@@ -104,21 +88,38 @@ export function Report({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<CategoryId | 'all'>('all');
   const [copied, setCopied] = useState<CopyTarget | null>(null);
-  const animatedScore = useCountUp(report.overallScore);
+  const [copyError, setCopyError] = useState<CopyTarget | null>(null);
+  const [focusedIssue, setFocusedIssue] = useState<string | null>(null);
+  const actionable = actionableIssues(report);
+  const priorities = actionable.slice(0, 3);
 
-  const hasActionable = actionableIssues(report).length > 0;
-  const priorities = actionableIssues(report).slice(0, 3);
+  useEffect(() => {
+    if (!focusedIssue) return;
+    const details = document.getElementById(`issue-${focusedIssue}`) as HTMLDetailsElement | null;
+    if (details) {
+      details.open = true;
+      details.querySelector('summary')?.focus();
+      details.scrollIntoView?.({ block: 'nearest' });
+    }
+    setFocusedIssue(null);
+  }, [focusedIssue]);
 
-  function handleCopy(target: CopyTarget, text: string): void {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        setCopied(target);
-        setTimeout(() => setCopied((current) => (current === target ? null : current)), 1500);
-      })
-      .catch(() => {
-        // Clipboard may be unavailable; fail quietly (same policy as IssueItem).
-      });
+  function showIssue(id: string): void {
+    setStatusFilter('all');
+    setCategoryFilter('all');
+    setFocusedIssue(id);
+  }
+
+  async function handleCopy(target: CopyTarget, text: string): Promise<void> {
+    setCopyError(null);
+    setCopied(null);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(target);
+      setTimeout(() => setCopied((current) => current === target ? null : current), 1500);
+    } catch {
+      setCopyError(target);
+    }
   }
 
   const groups = report.categories
@@ -131,64 +132,41 @@ export function Report({
 
   return (
     <div className={styles.report}>
-      <header className={styles.scoreHero}>
-        <p className={styles.scoreKicker}>Overall score</p>
-        <p className={styles.scoreLine}>
-          <strong className={styles.scoreNumber}>{animatedScore}</strong>
-          <span className={styles.scoreDenominator}>/100</span>
-          <span className={bandClass(report.overallScore)}>{report.band}</span>
-        </p>
-      </header>
-
-      <p className={styles.purposeAssessment}>{purposeSummary(report.pageType)}</p>
-
-      {recheck && <RecheckReceipt before={recheck.before} after={recheck.after} />}
-
       <section className={styles.fixFirst} aria-labelledby="fix-first-title">
-        <p className={styles.scoreKicker}>Fix first</p>
-        <h2 id="fix-first-title" className={styles.fixFirstTitle}>
-          {priorities.length > 0
-            ? 'The smallest set of changes that will improve this page now'
-            : 'No failing or warning findings need attention'}
+        <h2 id="fix-first-title" className={styles.sectionTitle}>
+          {actionable.length > 0 ? 'Fix first' : 'No fixes needed'}
         </h2>
+        <p className={styles.hint}>
+          {actionable.length} {actionable.length === 1 ? 'finding needs' : 'findings need'} attention
+        </p>
         {priorities.length > 0 && (
           <ol className={styles.fixFirstList}>
             {priorities.map((issue) => (
               <li key={issue.id}>
-                <span>{issue.title}</span>
-                <span>{issue.scoreImpact} point impact</span>
+                <button className={styles.priorityButton} onClick={() => showIssue(issue.id)}>
+                  <span>{issue.title}</span>
+                  <span className={issue.status === 'fail' ? styles.chipFail : styles.chipWarn}>
+                    {issue.status}
+                  </span>
+                  <Chevron />
+                </button>
               </li>
             ))}
           </ol>
         )}
+        <button
+          className={styles.buttonHero}
+          disabled={actionable.length === 0}
+          title={actionable.length > 0 ? 'Copy a prompt covering every failing and warning finding' : 'No failing or warning findings to build a prompt from'}
+          onClick={() => void handleCopy('prompt', buildFixPrompt(report))}
+        >
+          {copied === 'prompt' ? 'Copied' : 'Copy AI fix prompt'}
+        </button>
+        {copyError === 'prompt' && <p className={styles.copyError} role="alert">Copy failed. Check clipboard access and try again, or use Export report to download.</p>}
+        <p className={styles.hint}>Local page checks. Rankings, citations, and completed actions are not verified.</p>
       </section>
 
-      <SurfaceabilityEvidence snapshot={snapshot} />
-
-      <ul className={styles.categoryList}>
-        {report.categories.map((c, i) => (
-          <li
-            key={c.id}
-            className={styles.categoryRow}
-            style={{ '--d': `${i * 70}ms` } as React.CSSProperties}
-          >
-            <div className={styles.categoryTop}>
-              <span className={styles.categoryLabel}>{c.label}</span>
-              {/* One data point per row edge — issue counts live in the section headers
-                  below, where they help navigation instead of crowding the verdict. */}
-              <span className={styles.categoryScore}>
-                {c.score}/{c.maxScore}
-              </span>
-            </div>
-            <div className={styles.barTrack} aria-hidden="true">
-              <div
-                className={barClass(c.score, c.maxScore)}
-                style={{ width: `${c.maxScore > 0 ? (c.score / c.maxScore) * 100 : 0}%` }}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
+      {recheck && <RecheckReceipt before={recheck.before} after={recheck.after} />}
 
       <div className={styles.filters}>
         <fieldset className={styles.filterGroup}>
@@ -209,17 +187,13 @@ export function Report({
             ))}
           </div>
         </fieldset>
-
         <Select
           id="category-filter"
           label="Category"
           value={categoryFilter}
           options={[
             { value: 'all', label: 'All categories' },
-            ...report.categories.map((category) => ({
-              value: category.id,
-              label: category.label,
-            })),
+            ...report.categories.map((category) => ({ value: category.id, label: category.label })),
           ]}
           onChange={setCategoryFilter}
         />
@@ -227,103 +201,70 @@ export function Report({
 
       {groups.length === 0 ? (
         <p className={styles.hint}>No issues match the current filters.</p>
-      ) : (
-        groups.map((g, idx) => (
-          <Reveal key={g.category.id}>
-            <section className={styles.section}>
-              <h2 className={styles.sectionTitle}>
-                <span className={styles.sectionIndex}>{String(idx + 1).padStart(2, '0')}</span>
-                <span className={styles.sectionName}>{g.category.label}</span>
-                <span className={styles.sectionCount}>
-                  {g.issues.length} {g.issues.length === 1 ? 'issue' : 'issues'}
-                </span>
-              </h2>
-              <ul className={styles.issueList}>
-                {g.issues.map((issue) => (
-                  <IssueItem
-                    key={issue.id}
-                    issue={issue}
-                    page={{ url: report.pageUrl, pageType: report.pageType }}
-                  />
-                ))}
-              </ul>
-            </section>
-          </Reveal>
-        ))
-      )}
+      ) : groups.map((g) => (
+        <section key={g.category.id} className={styles.section}>
+          <h2 className={styles.sectionTitle}>
+            <span className={styles.sectionName}>{g.category.label}</span>
+            <span className={styles.sectionCount}>
+              {g.issues.length} {g.issues.length === 1 ? 'issue' : 'issues'}
+            </span>
+          </h2>
+          <ul className={styles.issueList}>
+            {g.issues.map((issue) => (
+              <IssueItem key={issue.id} issue={issue} page={{ url: report.pageUrl, pageType: report.pageType }} />
+            ))}
+          </ul>
+        </section>
+      ))}
 
-      <Reveal>
-      <div className={styles.exportButtons}>
-        <button
-          className={styles.buttonHero}
-          disabled={!hasActionable}
-          title={
-            hasActionable
-              ? 'Copy an LLM-ready prompt covering every failing and warning finding'
-              : 'No failing or warning findings to build a prompt from'
-          }
-          onClick={() => handleCopy('prompt', buildFixPrompt(report))}
-        >
-          {copied === 'prompt' ? 'Copied ✓' : 'Copy AI Fix Prompt'}
-        </button>
-        {/* One visual decision: the primary action keeps button weight; copy/download
-            variants are quiet text links grouped by verb. */}
-        <div className={styles.exportGroup}>
-          <span className={styles.exportLabel}>Copy</span>
-          <button
-            className={copied === 'md' ? styles.textButtonCopied : styles.textButton}
-            onClick={() => handleCopy('md', exportMarkdown(report))}
-          >
-            {copied === 'md' ? 'Copied ✓' : 'Markdown'}
-          </button>
-          <button
-            className={copied === 'json' ? styles.textButtonCopied : styles.textButton}
-            onClick={() => handleCopy('json', exportJson(report))}
-          >
-            {copied === 'json' ? 'Copied ✓' : 'JSON'}
-          </button>
-          <button
-            className={copied === 'evidence' ? styles.textButtonCopied : styles.textButton}
-            title="Copy the limited page evidence captured by this audit"
-            onClick={() => handleCopy('evidence', exportPageEvidenceMarkdown(snapshot))}
-          >
-            {copied === 'evidence' ? 'Copied ✓' : 'Page evidence'}
-          </button>
+      <details className={styles.section}>
+        <summary className={styles.sectionSummary}>
+          <Chevron />
+          <h2 className={styles.sectionTitleCollapsible}>Page evidence</h2>
+        </summary>
+        <div className={styles.sectionBody}>
+          <p className={styles.purposeAssessment}>{purposeSummary(report.pageType)}</p>
+          <SurfaceabilityEvidence snapshot={snapshot} />
+          <h3 className={styles.subheading}>Category scores</h3>
+          <dl className={styles.categoryList}>
+            {report.categories.map((category) => (
+              <div key={category.id} className={styles.categoryRow}>
+                <dt>{category.label}</dt>
+                <dd>{category.score}/{category.maxScore}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
-        <div className={styles.exportGroup}>
-          <span className={styles.exportLabel}>Download</span>
-          <button
-            className={styles.textButton}
-            onClick={() =>
-              downloadText(exportMarkdown(report), buildFilename(report, 'md'), 'text/markdown')
-            }
-          >
-            Markdown
-          </button>
-          <button
-            className={styles.textButton}
-            onClick={() =>
-              downloadText(exportJson(report), buildFilename(report, 'json'), 'application/json')
-            }
-          >
-            JSON
-          </button>
-          <button
-            className={styles.textButton}
-            title="Download the limited page evidence captured by this audit"
-            onClick={() =>
-              downloadText(
-                exportPageEvidenceMarkdown(snapshot),
-                buildFilename(report, 'md', 'page-evidence'),
-                'text/markdown',
-              )
-            }
-          >
-            Page evidence
-          </button>
+      </details>
+
+      <details className={styles.section}>
+        <summary className={styles.sectionSummary}>
+          <Chevron />
+          <h2 className={styles.sectionTitleCollapsible}>Export report</h2>
+        </summary>
+        <div className={styles.exportButtons}>
+          <div className={styles.exportGroup}>
+            <span className={styles.exportLabel}>Copy</span>
+            <button className={copied === 'md' ? styles.textButtonCopied : styles.textButton} onClick={() => void handleCopy('md', exportMarkdown(report))}>
+              {copied === 'md' ? 'Copied' : 'Markdown'}
+            </button>
+            <button className={copied === 'json' ? styles.textButtonCopied : styles.textButton} onClick={() => void handleCopy('json', exportJson(report))}>
+              {copied === 'json' ? 'Copied' : 'JSON'}
+            </button>
+            <button className={copied === 'evidence' ? styles.textButtonCopied : styles.textButton} title="Copy the limited page evidence captured by this audit" onClick={() => void handleCopy('evidence', exportPageEvidenceMarkdown(snapshot))}>
+              {copied === 'evidence' ? 'Copied' : 'Page evidence'}
+            </button>
+          </div>
+          <div className={styles.exportGroup}>
+            <span className={styles.exportLabel}>Download</span>
+            <button className={styles.textButton} onClick={() => downloadText(exportMarkdown(report), buildFilename(report, 'md'), 'text/markdown')}>Markdown</button>
+            <button className={styles.textButton} onClick={() => downloadText(exportJson(report), buildFilename(report, 'json'), 'application/json')}>JSON</button>
+            <button className={styles.textButton} title="Download the limited page evidence captured by this audit" onClick={() => downloadText(exportPageEvidenceMarkdown(snapshot), buildFilename(report, 'md', 'page-evidence'), 'text/markdown')}>Page evidence</button>
+          </div>
+          {copyError && copyError !== 'prompt' && <p className={styles.copyError} role="alert">Copy failed. Check clipboard access and try again, or use Export report to download.</p>}
         </div>
-      </div>
-      </Reveal>
+      </details>
+      <p className={styles.srOnly} role="status">{copied ? 'Copied to clipboard.' : ''}</p>
     </div>
   );
 }

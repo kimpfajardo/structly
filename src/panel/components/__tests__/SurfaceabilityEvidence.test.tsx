@@ -21,7 +21,7 @@ describe('SurfaceabilityEvidence', () => {
   it('renders delivery counts and scope from a snapshot', () => {
     const text = renderEvidence().textContent ?? '';
 
-    expect(text).toContain('Surfaceability evidence');
+    expect(text).toContain('Content delivery');
     expect(text).toContain('delivered');
     expect(text).toContain('Main: 1200 chars · page: 1800 chars');
     expect(text).toContain('Main: 1100 chars · page: 1700 chars');

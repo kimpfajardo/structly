@@ -5,7 +5,6 @@ import type { PillarStatus } from '../../core/aiSearch/insights';
 import { buildReadinessAssessment } from '../../core/readiness/readiness';
 import type { ReadinessState } from '../../core/readiness/readiness';
 import { Chevron } from './Chevron';
-import { Reveal } from './Reveal';
 import styles from '../panel.module.css';
 
 function pillarChipClass(status: PillarStatus): string | undefined {
@@ -59,7 +58,8 @@ export function AiSearchView({
 
   return (
     <div className={styles.aiView}>
-      <div className={styles.takeaway}>
+      <div>
+        <h2 className={styles.sectionTitle}>Local readiness</h2>
         <p className={styles.takeawayText}>
           {purpose !== 'unknown'
             ? `This is a local readiness check for a ${purpose} page. It shows what the page structurally delivers; it does not predict rankings, citations, traffic, or completed actions.`
@@ -69,166 +69,153 @@ export function AiSearchView({
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>
-          <span className={styles.sectionIndex}>01</span>
           <span className={styles.sectionName}>Readiness conditions</span>
         </h2>
         <ul className={styles.readinessConditions}>
           {assessment.conditions.map((condition) => (
             <li key={condition.id} className={styles.readinessCondition}>
-              <div className={styles.readinessConditionTop}>
-                <span>{condition.label}</span>
-                <span className={readinessClass(condition.state)}>
-                  {readinessLabel(condition.state)}
-                </span>
-              </div>
-              <p>{condition.detail}</p>
+              <details>
+                <summary className={styles.readinessConditionTop}>
+                  <Chevron />
+                  <span className={styles.issueTitle}>{condition.label}</span>
+                  <span className={readinessClass(condition.state)}>{readinessLabel(condition.state)}</span>
+                </summary>
+                <p>{condition.detail}</p>
+              </details>
             </li>
           ))}
         </ul>
       </section>
 
-      <Reveal>
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>
-            <span className={styles.sectionIndex}>02</span>
-            <span className={styles.sectionName}>Question coverage</span>
-          </h2>
-          <p className={styles.hint}>
-            Add up to three questions this page must make easy to answer. Structly checks where their meaningful terms appear; it does not judge answer quality.
-          </p>
-          <div className={styles.questionEntry}>
-            <label className={styles.srOnly} htmlFor="readiness-question">
-              A question this page should answer
-            </label>
-            <input
-              id="readiness-question"
-              className={styles.questionInput}
-              value={draftQuestion}
-              onChange={(event) => setDraftQuestion(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  addQuestion();
-                }
-              }}
-              placeholder="What should this page answer?"
-              disabled={questions.length >= 3}
-            />
-            <button className={styles.copyButton} onClick={addQuestion} disabled={questions.length >= 3}>
-              Add
-            </button>
-          </div>
-          {assessment.questionCoverage.items.length === 0 ? (
-            <p className={styles.hint}>No questions added yet.</p>
-          ) : (
-            <ul className={styles.questionList}>
-              {assessment.questionCoverage.items.map((item) => (
-                <li key={item.question} className={styles.questionItem}>
-                  <div>
-                    <span>{item.question}</span>
-                    <small>
-                      {item.matchedIn.length > 0
-                        ? `Found in ${item.matchedIn.join(' and ')}`
-                        : 'No meaningful terms found in the captured page evidence'}
-                    </small>
-                  </div>
-                  <div className={styles.questionActions}>
-                    <span className={readinessClass(item.state === 'structurally-covered' ? 'supported' : item.state === 'mentioned' ? 'unverifiable-locally' : 'blocked')}>
-                      {item.state.replace('-', ' ')}
-                    </span>
-                    <button
-                      className={styles.textButton}
-                      onClick={() => onQuestionsChange(questions.filter((question) => question !== item.question))}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </Reveal>
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>
+          <span className={styles.sectionName}>Question coverage</span>
+        </h2>
+        <p className={styles.hint}>
+          Add up to three questions this page must make easy to answer. Structly checks where their meaningful terms appear; it does not judge answer quality.
+        </p>
+        <div className={styles.questionEntry}>
+          <label className={styles.srOnly} htmlFor="readiness-question">
+            A question this page should answer
+          </label>
+          <input
+            id="readiness-question"
+            className={styles.questionInput}
+            value={draftQuestion}
+            onChange={(event) => setDraftQuestion(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                addQuestion();
+              }
+            }}
+            placeholder="What should this page answer?"
+            disabled={questions.length >= 3}
+          />
+          <button className={styles.copyButton} onClick={addQuestion} disabled={questions.length >= 3 || !draftQuestion.trim()}>
+            Add
+          </button>
+        </div>
+        {assessment.questionCoverage.items.length === 0 ? (
+          <p className={styles.hint}>No questions added yet.</p>
+        ) : (
+          <ul className={styles.questionList}>
+            {assessment.questionCoverage.items.map((item) => (
+              <li key={item.question} className={styles.questionItem}>
+                <div>
+                  <span>{item.question}</span>
+                  <small>
+                    {item.matchedIn.length > 0
+                      ? `Found in ${item.matchedIn.join(' and ')}`
+                      : 'No meaningful terms found in the captured page evidence'}
+                  </small>
+                </div>
+                <div className={styles.questionActions}>
+                  <span className={readinessClass(item.state === 'structurally-covered' ? 'supported' : item.state === 'mentioned' ? 'unverifiable-locally' : 'blocked')}>
+                    {item.state.replace('-', ' ')}
+                  </span>
+                  <button
+                    className={styles.textButton}
+                    onClick={() => onQuestionsChange(questions.filter((question) => question !== item.question))}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {assessment.actionPath && (
-        <Reveal>
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>
-              <span className={styles.sectionIndex}>03</span>
-              <span className={styles.sectionName}>Action path</span>
-            </h2>
-            <p className={styles.actionPathDetail}>{assessment.actionPath.detail}</p>
-            <p className={styles.hint}>
-              {assessment.actionPath.labeledFormControls} labeled form control(s), {assessment.actionPath.unlabeledFormControls} unlabeled.
-            </p>
-          </section>
-        </Reveal>
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Action path</h2>
+          <p className={styles.actionPathDetail}>{assessment.actionPath.detail}</p>
+          <p className={styles.hint}>
+            {assessment.actionPath.labeledFormControls} labeled form control(s), {assessment.actionPath.unlabeledFormControls} unlabeled.
+          </p>
+        </section>
       )}
 
-      <Reveal>
-        <details className={styles.section}>
-          <summary className={styles.sectionSummary}>
-            <Chevron />
-            <h2 className={styles.sectionTitleCollapsible}>
-              <span className={styles.sectionIndex}>{assessment.actionPath ? '04' : '03'}</span>
-              <span className={styles.sectionName}>Google guidance</span>
-            </h2>
-          </summary>
-          <div className={styles.sectionBody}>
-            <ul className={styles.pillarList}>
-              {insights.pillars.map((pillar) => (
-                <li key={pillar.id} className={styles.issueItem}>
-                  <details>
-                    <summary className={styles.issueSummary}>
-                      <span className={styles.issueTitle}>{pillar.title}</span>
-                      <span className={pillarChipClass(pillar.status)}>{pillar.status}</span>
-                    </summary>
-                    <div className={styles.issueDetail}>
-                      <p className={styles.pillarGuidance}>{pillar.guidance}</p>
-                      <div>
-                        <span className={styles.detailLabel}>On this page:</span>
-                        <ul className={styles.evidenceList}>
-                          {pillar.findings.map((finding, index) => <li key={index}>{finding}</li>)}
-                        </ul>
-                      </div>
-                      <div>
-                        <span className={styles.detailLabel}>Recommendations:</span>
-                        <ul className={styles.evidenceList}>
-                          {pillar.recommendations.map((recommendation, index) => <li key={index}>{recommendation}</li>)}
-                        </ul>
-                      </div>
-                      <p className={styles.pillarSources}>
-                        {pillar.sources.map((source) => (
-                          <a key={source.url} className={styles.sourceLink} href={source.url} target="_blank" rel="noreferrer">
-                            {source.label}
-                          </a>
-                        ))}
-                      </p>
+      <details className={styles.section}>
+        <summary className={styles.sectionSummary}>
+          <Chevron />
+          <h2 className={styles.sectionTitleCollapsible}>
+            <span className={styles.sectionName}>Google guidance</span>
+          </h2>
+        </summary>
+        <div className={styles.sectionBody}>
+          <ul className={styles.pillarList}>
+            {insights.pillars.map((pillar) => (
+              <li key={pillar.id} className={styles.issueItem}>
+                <details>
+                  <summary className={styles.issueSummary}>
+                    <Chevron />
+                    <span className={styles.issueTitle}>{pillar.title}</span>
+                    <span className={pillarChipClass(pillar.status)}>{pillar.status}</span>
+                  </summary>
+                  <div className={styles.issueDetail}>
+                    <p className={styles.pillarGuidance}>{pillar.guidance}</p>
+                    <div>
+                      <span className={styles.detailLabel}>On this page:</span>
+                      <ul className={styles.evidenceList}>
+                        {pillar.findings.map((finding, index) => <li key={index}>{finding}</li>)}
+                      </ul>
                     </div>
-                  </details>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </details>
-      </Reveal>
+                    <div>
+                      <span className={styles.detailLabel}>Recommendations:</span>
+                      <ul className={styles.evidenceList}>
+                        {pillar.recommendations.map((recommendation, index) => <li key={index}>{recommendation}</li>)}
+                      </ul>
+                    </div>
+                    <p className={styles.pillarSources}>
+                      {pillar.sources.map((source) => (
+                        <a key={source.url} className={styles.sourceLink} href={source.url} target="_blank" rel="noreferrer">
+                          {source.label}
+                        </a>
+                      ))}
+                    </p>
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </details>
 
-      <Reveal>
-        <details className={styles.section}>
-          <summary className={styles.sectionSummary}>
-            <Chevron />
-            <h2 className={styles.sectionTitleCollapsible}>
-              <span className={styles.sectionIndex}>{assessment.actionPath ? '05' : '04'}</span>
-              <span className={styles.sectionName}>What Google says you can skip</span>
-            </h2>
-          </summary>
-          <div className={styles.sectionBody}>
-            <ul className={styles.skipList}>
-              {insights.skipList.map((item, index) => <li key={index}>{item}</li>)}
-            </ul>
-          </div>
-        </details>
-      </Reveal>
+      <details className={styles.section}>
+        <summary className={styles.sectionSummary}>
+          <Chevron />
+          <h2 className={styles.sectionTitleCollapsible}>
+            <span className={styles.sectionName}>What Google says you can skip</span>
+          </h2>
+        </summary>
+        <div className={styles.sectionBody}>
+          <ul className={styles.skipList}>
+            {insights.skipList.map((item, index) => <li key={index}>{item}</li>)}
+          </ul>
+        </div>
+      </details>
     </div>
   );
 }

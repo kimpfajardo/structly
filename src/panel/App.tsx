@@ -6,6 +6,7 @@ import { parseRawHtml } from '../core/rawHtml';
 import { detectPageType } from '../core/detectPageType';
 import { ALL_RULES } from '../core/rules';
 import { scoreAudit } from '../core/scoring/score';
+import { actionableIssues } from '../core/export/prompt';
 import { Report } from './components/Report';
 import { AiSearchView } from './components/AiSearchView';
 import { Credits } from './components/Credits';
@@ -39,6 +40,13 @@ type View =
 type ResultTab = 'audit' | 'ai';
 type Theme = 'light' | 'dark';
 type AuditResult = Extract<View, { kind: 'result' }>;
+
+function bandClass(score: number): string | undefined {
+  if (score >= 90) return styles.bandStrong;
+  if (score >= 75) return styles.bandGood;
+  if (score >= 50) return styles.bandModerate;
+  return styles.bandMajor;
+}
 
 function buildResult(snapshot: PageSnapshot): AuditResult {
   const issues = ALL_RULES.map((rule) => rule(snapshot)).filter(
@@ -194,6 +202,7 @@ export default function App() {
 
   // Stale result: the active tab no longer matches the audited URL.
   const auditedUrl = view.kind === 'result' ? view.report.pageUrl : null;
+  const actionableCount = view.kind === 'result' ? actionableIssues(view.report).length : 0;
   const staleUrl =
     auditedUrl !== null && pageInfo !== null && pageInfo.url !== auditedUrl
       ? pageInfo.url
@@ -210,7 +219,7 @@ export default function App() {
   }
 
   return (
-    <div className={styles.container} data-theme={theme}>
+    <div className={styles.container} data-theme={theme} data-view={view.kind}>
       <header className={styles.header}>
         <div className={styles.brandRow}>
           <h1 className={styles.title}>
@@ -228,16 +237,25 @@ export default function App() {
             role="switch"
             aria-checked={theme === 'dark'}
             aria-label="Dark mode"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           >
-            <span className={styles.themeToggleThumb} />
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
+              {theme === 'dark' ? <><circle cx="10" cy="10" r="3.5" /><path d="M10 1v2m0 14v2M1 10h2m14 0h2M3.6 3.6 5 5m10 10 1.4 1.4m0-12.8L15 5M5 15l-1.4 1.4" /></> : <path d="M16.5 12.5A7 7 0 0 1 7.5 3.5a7 7 0 1 0 9 9Z" />}
+            </svg>
           </button>
         </div>
         {pageInfo && (
           <p className={styles.pageMeta}>
-            <span className={styles.pageTitle}>{pageInfo.title || 'Untitled page'}</span>
-            <span className={styles.pageUrl}>{pageInfo.url}</span>
+            <span className={styles.pageTitle} title={pageInfo.title}>{pageInfo.title || 'Untitled page'}</span>
+            <span className={styles.pageUrl} title={pageInfo.url}>{pageInfo.url}</span>
           </p>
+        )}
+        {view.kind === 'idle' && (
+          <div className={styles.idleIntro}>
+            <h2>See your page<br />more clearly.</h2>
+            <p>Inspect its structure.<br />Find what needs attention.</p>
+          </div>
         )}
         <div className={styles.controls}>
           {/* Once a result exists the user's job is reading, not re-running — the header
@@ -248,7 +266,8 @@ export default function App() {
             disabled={view.kind === 'loading'}
           >
             {view.kind === 'loading' && <span className={styles.spinner} aria-hidden="true" />}
-            {view.kind === 'loading' ? 'Auditing…' : 'Audit Page'}
+            {view.kind === 'loading' ? 'Auditing…' : view.kind === 'result' && staleUrl === null ? 'Recheck page' : 'Audit page'}
+            {view.kind === 'idle' && <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5" /></svg>}
           </button>
           {view.kind !== 'idle' && (
             <button className={styles.buttonSecondary} onClick={handleReset}>
@@ -258,10 +277,20 @@ export default function App() {
         </div>
       </header>
 
+      {view.kind === 'idle' && (
+        <>
+          <div className={styles.idleVisual} aria-hidden="true">
+            <div className={styles.photoCaption}><span>Initial HTML</span><span>Rendered page</span></div>
+          </div>
+          <section className={styles.idleContext}>
+            <h2>One page.<br />A closer look.</h2>
+            <p>Metadata, content, structured data, accessibility, rendering, and actions.</p>
+            <div className={styles.localScope}><span>Local page checks</span><span>{ALL_RULES.length} rules</span></div>
+            <p className={styles.hint}>Rankings, citations, and completed actions are not verified.</p>
+          </section>
+        </>
+      )}
       <div className={styles.statusRegion} role="status" aria-live="polite">
-        {view.kind === 'idle' && (
-          <p className={styles.idleHero}>Click Audit Page to run a check.</p>
-        )}
         {/* The button already carries the spinner; a second one here split focus. */}
         {view.kind === 'loading' && <p className={styles.statusLoading}>Auditing…</p>}
         {view.kind === 'error' && <p className={styles.error}>{view.message}</p>}
@@ -292,6 +321,19 @@ export default function App() {
 
       {view.kind === 'result' && (
         <>
+          <section className={styles.resultSummary} aria-label="Audit summary">
+            <div className={styles.verdict}>
+              <h2 className={styles.verdictTitle}>
+                {actionableCount > 0 ? <>{actionableCount} {actionableCount === 1 ? 'thing' : 'things'}<br />to fix.</> : <>No fixes<br />needed.</>}
+              </h2>
+              <p className={styles.hint}>{actionableCount > 0 ? 'Start with the findings below.' : 'No failing or warning findings in this audit.'}</p>
+            </div>
+            <div className={styles.score}>
+              <span>Checklist score</span>
+              <strong>{view.report.overallScore}<small>/100</small></strong>
+              <span className={bandClass(view.report.overallScore)}>{view.report.band}</span>
+            </div>
+          </section>
           <div className={styles.tabs} role="tablist" aria-label="Result views">
             <button
               id="audit-tab"

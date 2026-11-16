@@ -25,13 +25,12 @@ export function RecheckReceipt({
 
   return (
     <section className={styles.receipt} aria-labelledby="recheck-receipt-title">
-      <p className={styles.eyebrow}>Recheck receipt</p>
       <h2 id="recheck-receipt-title" className={styles.title}>
-        What changed on this page
+        Recheck receipt
       </h2>
       <ul className={styles.list}>
         <li>
-          <span>Readiness score</span>
+          <span>Checklist score</span>
           <strong>
             {before.report.overallScore} → {after.report.overallScore} ({changeLabel(scoreChange)})
           </strong>

@@ -33,10 +33,9 @@ export function SurfaceabilityEvidence(props: SurfaceabilityEvidenceProps) {
     <section className={styles.section} aria-labelledby="surfaceability-title">
       <header className={styles.header}>
         <div>
-          <p className={styles.kicker}>Surfaceability evidence</p>
-          <h2 id="surfaceability-title" className={styles.title}>
-            What machines receive
-          </h2>
+          <h3 id="surfaceability-title" className={styles.title}>
+            Content delivery
+          </h3>
         </div>
         <span className={statusClass(analysis.status)}>{STATUS_LABELS[analysis.status]}</span>
       </header>

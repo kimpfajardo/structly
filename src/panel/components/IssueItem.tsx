@@ -35,22 +35,23 @@ const STATUS_CHIP: Record<AuditIssue['status'], string | undefined> = {
 
 export function IssueItem({ issue, page }: { issue: AuditIssue; page: PromptPageContext }) {
   const [copied, setCopied] = useState<'text' | 'prompt' | null>(null);
+  const [copyError, setCopyError] = useState(false);
 
-  function handleCopy(target: 'text' | 'prompt', text: string): void {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
-        setCopied(target);
-        setTimeout(() => setCopied((current) => (current === target ? null : current)), 1500);
-      })
-      .catch(() => {
-        // Clipboard may be unavailable; fail quietly.
-      });
+  async function handleCopy(target: 'text' | 'prompt', text: string): Promise<void> {
+    setCopyError(false);
+    setCopied(null);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(target);
+      setTimeout(() => setCopied((current) => current === target ? null : current), 1500);
+    } catch {
+      setCopyError(true);
+    }
   }
 
   return (
     <li className={styles.issueItem}>
-      <details>
+      <details id={`issue-${issue.id}`}>
         <summary className={styles.issueSummary}>
           <Chevron />
           <span className={styles.issueTitle}>{issue.title}</span>
@@ -90,20 +91,22 @@ export function IssueItem({ issue, page }: { issue: AuditIssue; page: PromptPage
           <div className={styles.issueActions}>
             <button
               className={copied === 'text' ? styles.copied : styles.copyButton}
-              onClick={() => handleCopy('text', issueToText(issue))}
+              onClick={() => void handleCopy('text', issueToText(issue))}
             >
-              {copied === 'text' ? 'Copied ✓' : 'Copy'}
+              {copied === 'text' ? 'Copied' : 'Copy'}
             </button>
             {issue.status !== 'info' && (
               <button
                 className={copied === 'prompt' ? styles.copied : styles.copyButton}
                 title="Copy an LLM-ready prompt to fix this finding"
-                onClick={() => handleCopy('prompt', buildIssueFixPrompt(issue, page))}
+                onClick={() => void handleCopy('prompt', buildIssueFixPrompt(issue, page))}
               >
-                {copied === 'prompt' ? 'Copied ✓' : 'Copy fix prompt'}
+                {copied === 'prompt' ? 'Copied' : 'Copy fix prompt'}
               </button>
             )}
           </div>
+          <p className={styles.srOnly} role="status">{copied ? 'Copied to clipboard.' : ''}</p>
+          {copyError && <p className={styles.copyError} role="alert">Copy failed. Check clipboard access and try again.</p>}
         </div>
       </details>
     </li>
