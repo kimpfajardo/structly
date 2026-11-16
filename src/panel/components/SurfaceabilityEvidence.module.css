@@ -31,7 +31,7 @@
   font-size: 13px;
 }
 .metric dt { color: var(--muted); }
-.metric dd { margin: 0; font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.metric dd { margin: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
 .detail {
   display: flex;
   flex-wrap: wrap;

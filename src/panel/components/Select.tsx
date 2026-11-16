@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { transitionContent } from '../transition';
 import styles from '../panel.module.css';
 
 export function Select<T extends string>({
@@ -23,27 +24,31 @@ export function Select<T extends string>({
   useEffect(() => {
     if (!open) return;
     const close = (event: PointerEvent): void => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(event.target as Node)) void transitionContent(() => setOpen(false));
     };
     document.addEventListener('pointerdown', close);
     return () => document.removeEventListener('pointerdown', close);
   }, [open]);
 
-  function close(focusTrigger = false): void {
-    setOpen(false);
-    if (focusTrigger) triggerRef.current?.focus();
+  function close(): void {
+    void transitionContent(() => setOpen(false));
   }
 
   function openPopover(): void {
-    setActiveIndex(selectedIndex);
-    setOpen(true);
+    void transitionContent(() => {
+      setActiveIndex(selectedIndex);
+      setOpen(true);
+    });
   }
 
   function select(index: number): void {
     const option = options[index];
     if (!option) return;
-    onChange(option.value);
-    close(true);
+    void transitionContent(() => {
+      onChange(option.value);
+      setOpen(false);
+      triggerRef.current?.focus();
+    });
   }
 
   const selected = options[selectedIndex];
@@ -63,7 +68,10 @@ export function Select<T extends string>({
           aria-expanded={open}
           aria-controls={`${id}-options`}
           aria-activedescendant={open ? `${id}-option-${options[activeIndex]?.value}` : undefined}
-          onClick={() => (open ? close() : openPopover())}
+          onClick={() => void transitionContent(() => {
+            setActiveIndex(selectedIndex);
+            setOpen((current) => !current);
+          })}
           onKeyDown={(event) => {
             if (!open) {
               if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -87,11 +95,11 @@ export function Select<T extends string>({
               event.preventDefault();
               select(activeIndex);
             } else if (event.key === 'Tab') {
-              setOpen(false);
+              close();
             }
           }}
         >
-          <span id={`${id}-value`}>{selected?.label}</span>
+          <span id={`${id}-value`} className={styles.controlLabel}>{selected?.label}</span>
           <span className={styles.selectChevron} aria-hidden="true" />
         </button>
         {open && (
@@ -112,7 +120,7 @@ export function Select<T extends string>({
                 onPointerMove={() => setActiveIndex(index)}
                 onClick={() => select(index)}
               >
-                <span>{option.label}</span>
+                <span className={styles.controlLabel}>{option.label}</span>
                 {option.value === value && <span aria-hidden="true">✓</span>}
               </li>
             ))}

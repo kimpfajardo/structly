@@ -27,12 +27,14 @@ describe('AiSearchView', () => {
   it('renders local readiness conditions, question coverage, and Google guidance', () => {
     const container = renderView();
     const text = container.textContent ?? '';
-    expect(text).toContain('local readiness check');
+    expect(text).toContain('Local checks for a marketing page.');
     expect(text).toContain('Readiness conditions');
     expect(text).toContain('Question coverage');
     expect(text).toContain('Action path');
     expect(text).toContain('Google guidance');
     expect(text).toContain('What Google says you can skip');
+    expect(text).toContain('Answer quality is not assessed.');
+    expect(text).toContain('Rankings, citations, traffic, and completed actions are not verified.');
     expect(text).not.toContain('citation likelihood');
   });
 
@@ -46,7 +48,9 @@ describe('AiSearchView', () => {
     const container = renderView(makeSnapshot({ pageType: 'unknown' }));
     const text = container.textContent ?? '';
 
-    expect(text).toContain('without assuming a page type');
+    expect(text).toContain('Local checks for this page.');
+    expect(text).not.toContain('Local checks for a marketing page.');
+    expect(text).toContain('Rankings, citations, traffic, and completed actions are not verified.');
     expect(text).toContain('Readiness conditions');
     expect(text).toContain('Question coverage');
     expect(text).not.toContain('Action path');

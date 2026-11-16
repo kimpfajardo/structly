@@ -1,4 +1,6 @@
 import type { AuditReport, PageSnapshot } from '../../core/types';
+import { Chevron } from './Chevron';
+import panelStyles from '../panel.module.css';
 import styles from './recheck-receipt.module.css';
 
 function actionableCount(report: AuditReport): number {
@@ -24,10 +26,16 @@ export function RecheckReceipt({
   const renderedChange = after.snapshot.rendered.mainTextLength - before.snapshot.rendered.mainTextLength;
 
   return (
-    <section className={styles.receipt} aria-labelledby="recheck-receipt-title">
-      <h2 id="recheck-receipt-title" className={styles.title}>
-        Recheck receipt
-      </h2>
+    <details className={panelStyles.section} aria-labelledby="recheck-receipt-title">
+      <summary className={panelStyles.sectionSummary}>
+        <Chevron />
+        <div className={styles.summaryText}>
+          <h2 id="recheck-receipt-title" className={panelStyles.sectionTitleCollapsible}>
+            Recheck receipt
+          </h2>
+          <p className={styles.delta}>Score {changeLabel(scoreChange)} · Findings {changeLabel(issueChange)}</p>
+        </div>
+      </summary>
       <ul className={styles.list}>
         <li>
           <span>Checklist score</span>
@@ -50,6 +58,6 @@ export function RecheckReceipt({
           <strong>{changeLabel(renderedChange)} characters</strong>
         </li>
       </ul>
-    </section>
+    </details>
   );
 }

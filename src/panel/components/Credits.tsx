@@ -84,7 +84,7 @@ export function Credits() {
               <line x1="10" y1="1" x2="10" y2="4" />
               <line x1="14" y1="1" x2="14" y2="4" />
             </svg>
-            Buy me a coffee
+            <span className={styles.controlLabel}>Buy me a coffee</span>
           </a>
           <nav className={styles.creditsLinks} aria-label="Developer links">
             {LINKS.map((link) => (

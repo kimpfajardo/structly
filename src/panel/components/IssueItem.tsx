@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AuditIssue } from '../../core/types';
 import { buildIssueFixPrompt, type PromptPageContext } from '../../core/export/prompt';
 import { Chevron } from './Chevron';
+import { transitionContent } from '../transition';
 import styles from '../panel.module.css';
 
 // Plain-text block copied by the "Copy" button — all fields, labeled (06-ui-panel.md).
@@ -36,16 +37,35 @@ const STATUS_CHIP: Record<AuditIssue['status'], string | undefined> = {
 export function IssueItem({ issue, page }: { issue: AuditIssue; page: PromptPageContext }) {
   const [copied, setCopied] = useState<'text' | 'prompt' | null>(null);
   const [copyError, setCopyError] = useState(false);
+  const copyRun = useRef(0);
+  const copyTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => () => {
+    copyRun.current++;
+    clearTimeout(copyTimer.current);
+  }, []);
 
   async function handleCopy(target: 'text' | 'prompt', text: string): Promise<void> {
-    setCopyError(false);
-    setCopied(null);
+    const id = ++copyRun.current;
+    clearTimeout(copyTimer.current);
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(target);
-      setTimeout(() => setCopied((current) => current === target ? null : current), 1500);
+      if (id !== copyRun.current) return;
+      await transitionContent(() => {
+        if (id !== copyRun.current) return;
+        setCopyError(false);
+        setCopied(target);
+        copyTimer.current = setTimeout(() => void transitionContent(() => {
+          if (id === copyRun.current) setCopied(null);
+        }), 1500);
+      });
     } catch {
-      setCopyError(true);
+      if (id !== copyRun.current) return;
+      await transitionContent(() => {
+        if (id !== copyRun.current) return;
+        setCopied(null);
+        setCopyError(true);
+      });
     }
   }
 
@@ -93,7 +113,7 @@ export function IssueItem({ issue, page }: { issue: AuditIssue; page: PromptPage
               className={copied === 'text' ? styles.copied : styles.copyButton}
               onClick={() => void handleCopy('text', issueToText(issue))}
             >
-              {copied === 'text' ? 'Copied' : 'Copy'}
+              <span className={styles.controlLabel}>{copied === 'text' ? 'Copied' : 'Copy'}</span>
             </button>
             {issue.status !== 'info' && (
               <button
@@ -101,7 +121,7 @@ export function IssueItem({ issue, page }: { issue: AuditIssue; page: PromptPage
                 title="Copy an LLM-ready prompt to fix this finding"
                 onClick={() => void handleCopy('prompt', buildIssueFixPrompt(issue, page))}
               >
-                {copied === 'prompt' ? 'Copied' : 'Copy fix prompt'}
+                <span className={styles.controlLabel}>{copied === 'prompt' ? 'Copied' : 'Copy fix prompt'}</span>
               </button>
             )}
           </div>

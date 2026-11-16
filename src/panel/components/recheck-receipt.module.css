@@ -1,6 +1,6 @@
-.receipt { border-top: 1px solid var(--hairline); padding-top: 16px; }
-.title { margin: 0; font-size: 18px; font-weight: 400; letter-spacing: -0.025em; }
-.list { list-style: none; margin: 8px 0 0; padding: 0; }
+.summaryText { min-width: 0; padding: 12px 0; }
+.delta { margin: 4px 0 0; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.list { list-style: none; margin: 8px 0 16px; padding: 0; }
 .list li {
   display: flex;
   flex-wrap: wrap;
@@ -11,4 +11,4 @@
   font-size: 13px;
 }
 .list span { color: var(--muted); }
-.list strong { font-family: var(--font-mono); font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.list strong { font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; }

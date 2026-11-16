@@ -22,5 +22,8 @@ describe('RecheckReceipt', () => {
 
     expect(container.textContent).toContain('Recheck receipt');
     expect(container.textContent).toContain('+220 characters');
+    const receipt = container.querySelector('details');
+    expect(receipt?.open).toBe(false);
+    expect(receipt?.querySelector('summary')?.textContent).toContain('Score 0 · Findings 0');
   });
 });
