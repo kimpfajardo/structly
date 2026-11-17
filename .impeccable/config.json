@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "helvetica",
+        "files": [
+          "src/panel/panel.module.css"
+        ],
+        "createdAt": "2026-11-16T06:43:31.753Z",
+        "reason": "Agent review: Helvetica is an intentional system-font fallback in the existing compact inspector. The separate visual sample uses Archivo. Font popularity alone is not a defect; this exception applies only to this value in this file."
+      }
+    ]
+  }
+}
