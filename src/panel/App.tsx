@@ -14,8 +14,8 @@ import { DiscoveryCards } from './components/DiscoveryCards';
 import { transitionContent } from './transition';
 import logoBlack from '../../public/icons/structly-guiding-light-icon-black.svg';
 import logoWhite from '../../public/icons/structly-guiding-light-icon-white.svg';
-import loadingVideoUrl from '../../public/videos/refracted-glass.mp4';
-import loadingPoster from '../../public/images/refracted-glass.webp';
+import loadingVideoUrl from './assets/refracted-glass.mp4';
+import loadingPoster from './assets/refracted-glass.webp';
 import styles from './panel.module.css';
 
 // Long URLs get middle-truncated for display in flowing text (the stale banner), keeping the

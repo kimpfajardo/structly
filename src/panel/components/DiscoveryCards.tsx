@@ -1,6 +1,6 @@
-import seoImage from '../../../public/images/discovery-seo.svg';
-import aeoImage from '../../../public/images/discovery-aeo.svg';
-import geoImage from '../../../public/images/discovery-geo.svg';
+import seoImage from '../assets/discovery-seo.svg';
+import aeoImage from '../assets/discovery-aeo.svg';
+import geoImage from '../assets/discovery-geo.svg';
 import styles from '../panel.module.css';
 
 const topics = [
